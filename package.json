@@ -1,0 +1,48 @@
+{
+  "name": "notion-crawler",
+  "version": "1.0.0",
+  "description": "A library to recursively retrieve and serialize Notion pages with customization for machine learning applications.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --sourcemap",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TomPenguin/notion-crawler.git"
+  },
+  "keywords": [
+    "notion",
+    "crawler",
+    "serialization",
+    "machine-learning",
+    "ai",
+    "markdown"
+  ],
+  "homepage": "https://github.com/TomPenguin/notion-crawler#readme",
+  "author": "TomPenguin <tom.penguin.zoo@gmail.com> (https://github.com/TomPenguin)",
+  "bugs": {
+    "url": "https://github.com/TomPenguin/notion-crawler/issues"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "^3.0.3",
+    "prettier-plugin-organize-imports": "^3.2.3",
+    "tsup": "^7.2.0"
+  }
+}
