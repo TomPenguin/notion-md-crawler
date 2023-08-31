@@ -31,12 +31,54 @@ const client = new Client({ auth: process.env.NOTION_API_KEY });
 const crawl = crawler({ client });
 
 const main = async () => {
-  const pages = await crawl("********-****-****-****-************");
+  const rootPageId = "****";
+  const pages = await crawl(rootPageId);
   const result = pagesToString(pages);
 };
 
 main();
 ```
+
+## API
+
+### crawler
+
+#### Parameters:
+
+- `options.client` (NotionClient): Notion client.
+- `options.serializerStrategy` (SerializerStrategy, Optional): Used to customize the serializer.
+- `rootPageId` (string): Id of the root page to be crawled.
+
+#### Returns:
+
+- `Promise<Pages>`: `Pages` object resulting from recursively parsing Notion pages.
+
+### `Pages` Object
+
+Key is page id, value is `Page` Object.
+
+```ts
+type Pages = <string, Page>;
+```
+
+### `Page` Object
+
+```ts
+type Page = {
+  metadata: {
+    id: string;
+    title: string;
+    createdTime: string;
+    lastEditedTime: string;
+    parentId?: string;
+  };
+  lines: string[];
+};
+```
+
+## Use Metadata
+
+Since `crawler` returns `Page` objects and `Page` object contain metadata, you can be used it for machine learning.
 
 ## Custom Serialization
 
