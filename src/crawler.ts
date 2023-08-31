@@ -46,6 +46,12 @@ const fetchNotionPage = (client: Client) => (pageId: string) =>
     return [];
   });
 
+const fetchNotionDatabase = (client: Client) => (databaseId: string) =>
+  client.databases
+    .query({ database_id: databaseId })
+    .then(({ results }) => results)
+    .catch(() => []);
+
 const hasType = (block: NotionBlockObjectResponse): block is NotionBlock =>
   "type" in block;
 
@@ -109,6 +115,28 @@ const walk =
         cursor.lines.push(line);
       }
 
+      if (blockIs(block, "child_database")) {
+        pages[block.id] = {
+          metadata: {
+            id: block.id,
+            title: block.child_database.title,
+            parentId: cursor.metadata.id,
+            createdTime: block.created_time,
+            lastEditedTime: block.last_edited_time,
+          },
+          lines: [],
+        };
+
+        const crawlDatabase = databaseCrawler({
+          client,
+          serializerStrategy: strategy,
+        });
+        const blockPages = await crawlDatabase(block.id);
+        pages = { ...pages, ...blockPages };
+
+        continue;
+      }
+
       if (block.has_children) {
         const blockId = blockIs(block, "synced_block")
           ? block.synced_block.synced_from?.block_id || block.id
@@ -133,20 +161,21 @@ const walk =
 const extractPageTitle = (page: NotionPartialPageObjectResponse) => {
   if (!("properties" in page)) return "";
 
-  if (page.properties.title.type !== "title") return "";
+  if (page.properties.title?.type !== "title") return "";
 
   return page.properties.title.title[0].plain_text;
 };
 
-export type NotionMdCrawlerOptions = {
+export type CrawlerOptions = {
   client: Client;
   serializerStrategy?: Partial<SerializerStrategy>;
+  parentId?: string;
 };
-export type NotionMdCrawler = (
-  options: NotionMdCrawlerOptions,
+export type Crawler = (
+  options: CrawlerOptions,
 ) => (rootPageId: string) => Promise<Pages>;
-export const crawler: NotionMdCrawler =
-  ({ client, serializerStrategy }) =>
+export const crawler: Crawler =
+  ({ client, serializerStrategy, parentId }) =>
   async (rootPageId: string) => {
     const rootPage = (await fetchNotionPage(client)(rootPageId)) as any;
     const rootPageTitle = extractPageTitle(rootPage);
@@ -158,6 +187,7 @@ export const crawler: NotionMdCrawler =
         title: rootPageTitle,
         createdTime: rootPage.created_time,
         lastEditedTime: rootPage.last_edited_time,
+        parentId,
       },
       lines: [],
     };
@@ -166,4 +196,22 @@ export const crawler: NotionMdCrawler =
       rootBlocks,
       cursor,
     );
+  };
+
+export type DatabaseCrawler = (
+  options: CrawlerOptions,
+) => (databaseId: string) => Promise<Pages>;
+export const databaseCrawler: DatabaseCrawler =
+  (options) => async (databaseId) => {
+    const crawl = crawler({ ...options, parentId: databaseId });
+    const records = await fetchNotionDatabase(options.client)(databaseId);
+
+    let pages: Pages = {};
+
+    for (const record of records) {
+      const recordPages = await crawl(record.id);
+      pages = { ...pages, ...recordPages };
+    }
+
+    return pages;
   };
