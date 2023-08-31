@@ -13,13 +13,17 @@ A library to recursively retrieve and serialize Notion pages with customization 
 
 ## Installation
 
+[`@notionhq/client`](https://github.com/makenotion/notion-sdk-js) must also be installed.
+
 Using npm:
 
 ```bash
-npm install notion-md-crawler
+npm install notion-md-crawler @notionhq/client
 ```
 
 ## Quick Start
+
+> ⚠️ Note: Before getting started, create [an integration and find the token](https://www.notion.so/my-integrations). Details on methods can be found in [API section](https://github.com/souvikinator/notion-to-md#api)
 
 ```ts
 import { Client } from "@notionhq/client";
