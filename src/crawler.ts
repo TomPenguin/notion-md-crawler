@@ -132,8 +132,8 @@ export type NotionCrawlerOptions = {
 };
 export const crawler =
   ({ client, serializerStrategy }: NotionCrawlerOptions) =>
-  async (pageId: string) => {
-    const rootPage = (await fetchNotionPage(client)(pageId)) as any;
+  async (rootPageId: string) => {
+    const rootPage = (await fetchNotionPage(client)(rootPageId)) as any;
     const rootPageTitle = extractPageTitle(rootPage);
     const rootBlocks = await fetchNotionBlocks(client)(rootPage.id);
 
