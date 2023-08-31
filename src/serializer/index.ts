@@ -1,6 +1,6 @@
 import * as md from "md-utils-ts";
 import { ExtractBlock, NotionBlock } from "../types.js";
-import * as util from "./util.js";
+import * as utils from "./utils.js";
 
 export type Serializer<T extends NotionBlock["type"]> = (
   block: ExtractBlock<T>,
@@ -8,24 +8,24 @@ export type Serializer<T extends NotionBlock["type"]> = (
 
 type Audio = Serializer<"audio">;
 export const audio: Audio = (block) => {
-  const { title, href } = util.link(block.audio);
+  const { title, href } = utils.link(block.audio);
   return md.anchor(title, href);
 };
 
 type Bookmark = Serializer<"bookmark">;
 export const bookmark: Bookmark = (block) =>
-  md.anchor(util.richText(block.bookmark.caption), block.bookmark.url);
+  md.anchor(utils.richText(block.bookmark.caption), block.bookmark.url);
 
 type Breadcrumb = Serializer<"breadcrumb">;
 export const breadcrumb: Breadcrumb = () => false;
 
 type BulletedListItem = Serializer<"bulleted_list_item">;
 export const bulletedListItem: BulletedListItem = (block) =>
-  md.bullet(util.richText(block.bulleted_list_item.rich_text));
+  md.bullet(utils.richText(block.bulleted_list_item.rich_text));
 
 type Callout = Serializer<"callout">;
 export const callout: Callout = (block) =>
-  md.quote(util.richText(block.callout.rich_text));
+  md.quote(utils.richText(block.callout.rich_text));
 
 type ChildPage = Serializer<"child_page">;
 export const childPage: ChildPage = (block) => `[${block.child_page.title}]`;
@@ -36,7 +36,7 @@ export const childDatabase: ChildDatabase = (block) =>
 
 type Code = Serializer<"code">;
 export const code: Code = (block) =>
-  md.codeBlock(block.code.language)(util.richText(block.code.rich_text));
+  md.codeBlock(block.code.language)(utils.richText(block.code.rich_text));
 
 type Column = Serializer<"column">;
 export const column: Column = () => false;
@@ -49,7 +49,7 @@ export const divider: Divider = () => md.hr();
 
 type Embed = Serializer<"embed">;
 export const embed: Embed = (block) => {
-  const caption = util.richText(block.embed.caption);
+  const caption = utils.richText(block.embed.caption);
   return md.anchor(caption, block.embed.url);
 };
 
@@ -59,25 +59,25 @@ export const equation: Equation = (block) =>
 
 type File = Serializer<"file">;
 export const file: File = (block) => {
-  const { title, href } = util.link(block.file);
+  const { title, href } = utils.link(block.file);
   return md.anchor(title, href);
 };
 
 type Heading1 = Serializer<"heading_1">;
 export const heading1: Heading1 = (block) =>
-  md.h1(util.richText(block.heading_1.rich_text));
+  md.h1(utils.richText(block.heading_1.rich_text));
 
 type Heading2 = Serializer<"heading_2">;
 export const heading2: Heading2 = (block) =>
-  md.h2(util.richText(block.heading_2.rich_text));
+  md.h2(utils.richText(block.heading_2.rich_text));
 
 type Heading3 = Serializer<"heading_3">;
 export const heading3: Heading3 = (block) =>
-  md.h3(util.richText(block.heading_3.rich_text));
+  md.h3(utils.richText(block.heading_3.rich_text));
 
 type Image = Serializer<"image">;
 export const image: Image = (block) => {
-  const { title, href } = util.link(block.image);
+  const { title, href } = utils.link(block.image);
   return md.image(title, href);
 };
 
@@ -94,21 +94,21 @@ export const linkToPage: LinkToPage = (block) => {
 
 type NumberedListItem = Serializer<"numbered_list_item">;
 export const numberedListItem: NumberedListItem = (block) =>
-  md.bullet(util.richText(block.numbered_list_item.rich_text), 1);
+  md.bullet(utils.richText(block.numbered_list_item.rich_text), 1);
 
 type Paragraph = Serializer<"paragraph">;
 export const paragraph: Paragraph = (block) =>
-  util.richText(block.paragraph.rich_text);
+  utils.richText(block.paragraph.rich_text);
 
 type PDF = Serializer<"pdf">;
 export const pdf: PDF = (block) => {
-  const { title, href } = util.link(block.pdf);
+  const { title, href } = utils.link(block.pdf);
   return md.anchor(title, href);
 };
 
 type Quote = Serializer<"quote">;
 export const quote: Quote = (block) =>
-  md.quote(util.richText(block.quote.rich_text));
+  md.quote(utils.richText(block.quote.rich_text));
 
 type SyncedBlock = Serializer<"synced_block">;
 export const syncedBlock: SyncedBlock = () => false;
@@ -122,26 +122,26 @@ export const tableOfContents: TableOfContents = () => false;
 type TableRow = Serializer<"table_row">;
 export const tableRow: TableRow = (block) =>
   `| ${block.table_row.cells
-    .flatMap((row) => row.map((column) => util.richText([column])))
+    .flatMap((row) => row.map((column) => utils.richText([column])))
     .join(" | ")} |`;
 
 type Template = Serializer<"template">;
 export const template: Template = (block) =>
-  util.richText(block.template.rich_text);
+  utils.richText(block.template.rich_text);
 
 type ToDo = Serializer<"to_do">;
 export const toDo: ToDo = (block) =>
-  md.todo(util.richText(block.to_do.rich_text), block.to_do.checked);
+  md.todo(utils.richText(block.to_do.rich_text), block.to_do.checked);
 
 type Toggle = Serializer<"toggle">;
-export const toggle: Toggle = (block) => util.richText(block.toggle.rich_text);
+export const toggle: Toggle = (block) => utils.richText(block.toggle.rich_text);
 
 type Unsupported = Serializer<"unsupported">;
 export const unsupported: Unsupported = () => false;
 
 type Video = Serializer<"video">;
 export const video: Video = (block) => {
-  const { title, href } = util.link(block.video);
+  const { title, href } = utils.link(block.video);
   return md.anchor(title, href);
 };
 
@@ -183,5 +183,3 @@ export const strategy: SerializerStrategy = {
   unsupported,
   video,
 };
-
-export { util };
