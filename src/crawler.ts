@@ -1,9 +1,8 @@
 import { Client, collectPaginatedAPI } from "@notionhq/client";
 import { indent } from "md-utils-ts";
 import { strategy } from "./serializer/index.js";
-import { SerializerStrategy } from "./serializer/types.js";
+import { Serializers } from "./serializer/types.js";
 import {
-  ExtractBlock,
   NotionBlock,
   NotionBlockObjectResponse,
   NotionClient,
@@ -22,13 +21,12 @@ export type Page = {
 
 export type Pages = Record<string, Page>;
 
-type NotionChildPageBlock = ExtractBlock<"child_page">;
 type NotionPageRetrieveMethod = NotionClient["pages"]["retrieve"];
 type NotionPartialPageObjectResponse = Awaited<
   ReturnType<NotionPageRetrieveMethod>
 >;
 
-const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
+const fetchBlocks = (client: Client) => async (blockId: string) =>
   collectPaginatedAPI(client.blocks.children.list, {
     block_id: blockId,
   }).catch((err) => {
@@ -38,7 +36,7 @@ const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
     return [];
   });
 
-const fetchNotionPage = (client: Client) => (pageId: string) =>
+const fetchPage = (client: Client) => (pageId: string) =>
   client.pages.retrieve({ page_id: pageId }).catch((err) => {
     console.error(`Fetching Notion page failed. [pageId: ${pageId}]`);
     console.error(err);
@@ -60,102 +58,109 @@ const blockIs = <T extends NotionBlock["type"]>(
   type: T,
 ): block is Extract<NotionBlock, { type: T }> => block.type === type;
 
-const getCursor = (
-  pageBlock: NotionChildPageBlock,
-  parentId?: string,
-): Page => ({
-  metadata: {
-    id: pageBlock.id,
-    title: pageBlock.child_page.title,
-    createdTime: pageBlock.created_time,
-    lastEditedTime: pageBlock.last_edited_time,
-    parentId,
-  },
-  lines: [],
-});
-
-const getNest = (block: NotionBlock, baseNest: number) => {
-  switch (block.type) {
-    // Reset nest
-    case "child_page":
-      return 0;
-
-    // Eliminates unnecessary nests due to NotionBlock structure
-    case "table":
-    case "table_row":
-    case "column_list":
-    case "column":
-    case "synced_block":
-      return baseNest;
-
-    default:
-      return baseNest + 1;
-  }
-};
+const IGNORE_NEST_LIST = ["table", "table_row", "column_list", "column"];
 
 const walk =
   (client: Client) =>
-  (strategy: SerializerStrategy) =>
+  (serializers: Serializers) =>
   async (
+    parent: Page,
     blocks: NotionBlockObjectResponse[],
-    cursor: Page,
-    pages: Pages = {},
-    nest = 0,
+    context: Pages = {},
+    depth = 0,
   ): Promise<Pages> => {
-    pages[cursor.metadata.id] = pages[cursor.metadata.id] || cursor;
+    context[parent.metadata.id] = context[parent.metadata.id] || parent;
 
     for (const block of blocks) {
       if (!hasType(block)) continue;
 
-      const serialize = strategy[block.type];
-      const text = serialize(block as any);
+      const serializer = serializers[block.type];
+      const text = serializer(block as any);
 
       if (text !== false) {
-        const line = indent()(text, nest);
-        cursor.lines.push(line);
+        const line = indent()(text, depth);
+        parent.lines.push(line);
+      }
+
+      if (blockIs(block, "synced_block")) {
+        // Specify the sync destination block id
+        const blockId = block.synced_block.synced_from?.block_id || block.id;
+        const blocks = await fetchBlocks(client)(blockId);
+        const pages = await walk(client)(serializers)(
+          parent,
+          blocks,
+          context,
+          depth,
+        );
+
+        context = { ...context, ...pages };
+
+        continue;
+      }
+
+      if (blockIs(block, "child_page")) {
+        const nextParent: Page = {
+          metadata: {
+            id: block.id,
+            title: block.child_page.title,
+            createdTime: block.created_time,
+            lastEditedTime: block.last_edited_time,
+            parentId: parent.metadata.id,
+          },
+          lines: [],
+        };
+        const blocks = await fetchBlocks(client)(block.id);
+        const pages = await walk(client)(serializers)(
+          nextParent,
+          blocks,
+          context,
+          0,
+        );
+
+        context = { ...context, ...pages };
+
+        continue;
       }
 
       if (blockIs(block, "child_database")) {
-        pages[block.id] = {
+        context[block.id] = {
           metadata: {
             id: block.id,
             title: block.child_database.title,
-            parentId: cursor.metadata.id,
             createdTime: block.created_time,
             lastEditedTime: block.last_edited_time,
+            parentId: parent.metadata.id,
           },
           lines: [],
         };
 
         const crawlDatabase = databaseCrawler({
           client,
-          serializerStrategy: strategy,
+          serializers: serializers,
         });
-        const blockPages = await crawlDatabase(block.id);
-        pages = { ...pages, ...blockPages };
+        const pages = await crawlDatabase(block.id);
+
+        context = { ...context, ...pages };
 
         continue;
       }
 
       if (block.has_children) {
-        const blockId = blockIs(block, "synced_block")
-          ? block.synced_block.synced_from?.block_id || block.id
-          : block.id;
-        const childBlocks = await fetchNotionBlocks(client)(blockId);
-        const nextCursor = blockIs(block, "child_page")
-          ? getCursor(block, cursor.metadata.id)
-          : cursor;
-        const childPages = await walk(client)(strategy)(
-          childBlocks,
-          nextCursor,
-          pages,
-          getNest(block, nest),
+        const blocks = await fetchBlocks(client)(block.id);
+        const pages = await walk(client)(serializers)(
+          parent,
+          blocks,
+          context,
+          IGNORE_NEST_LIST.includes(block.type) ? depth : depth + 1,
         );
-        pages = { ...pages, ...childPages };
+
+        context = { ...context, ...pages };
+
+        continue;
       }
     }
 
-    return pages;
+    return context;
   };
 
 const extractPageTitle = (page: NotionPartialPageObjectResponse) => {
@@ -168,20 +173,20 @@ const extractPageTitle = (page: NotionPartialPageObjectResponse) => {
 
 export type CrawlerOptions = {
   client: Client;
-  serializerStrategy?: Partial<SerializerStrategy>;
+  serializers?: Partial<Serializers>;
   parentId?: string;
 };
 export type Crawler = (
   options: CrawlerOptions,
 ) => (rootPageId: string) => Promise<Pages>;
 export const crawler: Crawler =
-  ({ client, serializerStrategy, parentId }) =>
+  ({ client, serializers, parentId }) =>
   async (rootPageId: string) => {
-    const rootPage = (await fetchNotionPage(client)(rootPageId)) as any;
+    const rootPage = (await fetchPage(client)(rootPageId)) as any;
     const rootPageTitle = extractPageTitle(rootPage);
-    const rootBlocks = await fetchNotionBlocks(client)(rootPage.id);
+    const rootBlocks = await fetchBlocks(client)(rootPage.id);
 
-    const cursor: Page = {
+    const parent: Page = {
       metadata: {
         id: rootPage.id,
         title: rootPageTitle,
@@ -192,10 +197,7 @@ export const crawler: Crawler =
       lines: [],
     };
 
-    return walk(client)({ ...strategy, ...serializerStrategy })(
-      rootBlocks,
-      cursor,
-    );
+    return walk(client)({ ...strategy, ...serializers })(parent, rootBlocks);
   };
 
 export type DatabaseCrawler = (
@@ -206,12 +208,12 @@ export const databaseCrawler: DatabaseCrawler =
     const crawl = crawler({ ...options, parentId: databaseId });
     const records = await fetchNotionDatabase(options.client)(databaseId);
 
-    let pages: Pages = {};
+    let context: Pages = {};
 
     for (const record of records) {
-      const recordPages = await crawl(record.id);
-      pages = { ...pages, ...recordPages };
+      const pages = await crawl(record.id);
+      context = { ...context, ...pages };
     }
 
-    return pages;
+    return context;
   };

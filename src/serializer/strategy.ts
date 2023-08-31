@@ -1,7 +1,7 @@
 import { defaults } from "./defaults.js";
-import { SerializerStrategy } from "./types.js";
+import { Serializers } from "./types.js";
 
-export const strategy: SerializerStrategy = {
+export const strategy: Serializers = {
   audio: defaults.audio,
   bookmark: defaults.bookmark,
   breadcrumb: defaults.breadcrumb,

@@ -50,7 +50,7 @@ main();
 #### Parameters:
 
 - `options.client` (NotionClient): Notion client.
-- `options.serializerStrategy` (SerializerStrategy, Optional): Used to customize the serializer.
+- `options.serializers` (Serializers, Optional): Used to customize the serializer.
 - `rootPageId` (string): Id of the root page to be crawled.
 
 #### Returns:
@@ -95,7 +95,7 @@ You can define your own custom serializer. You can also use the utility function
 ```ts
 import { crawler, serializer, Serializer } from "notion-md-crawler";
 
-const embedSerializer: Serializer<"embed"> = (block) => {
+const customEmbedSerializer: Serializer<"embed"> = (block) => {
   if (block.embed.url) return "";
 
   // You can use serializer utility.
@@ -107,11 +107,11 @@ const embedSerializer: Serializer<"embed"> = (block) => {
 </figure>`;
 };
 
-const serializerStrategy = {
-  embed: embedSerializer,
+const serializers = {
+  embed: customEmbedSerializer,
 };
 
-const crawl = crawler({ client, serializerStrategy });
+const crawl = crawler({ client, serializers });
 ```
 
 ### Skip serialize
@@ -120,7 +120,7 @@ Returning `false` in the serializer allows you to skip the serialize of that blo
 
 ```ts
 const image: serializer.Serializer<"image"> = () => false;
-const crawl = crawler({ client, serializerStrategy: { image } });
+const crawl = crawler({ client, serializers: { image } });
 ```
 
 ### Advanced: Use default serializer in custom serializer
@@ -147,11 +147,11 @@ const customImageSerializer: serializer.Serializer<"image"> = (block) => {
   return defaultImageSerializer(block);
 };
 
-const serializerStrategy = {
+const serializers = {
   image: customImageSerializer,
 };
 
-const crawl = crawler({ client, serializerStrategy });
+const crawl = crawler({ client, serializers });
 ```
 
 ## Issues and Feedback
