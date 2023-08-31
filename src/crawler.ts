@@ -1,6 +1,7 @@
 import { Client, collectPaginatedAPI } from "@notionhq/client";
 import { indent } from "md-utils-ts";
-import { SerializerStrategy, strategy } from "./serializer/index.js";
+import { strategy } from "./serializer/index.js";
+import { SerializerStrategy } from "./serializer/types.js";
 import {
   ExtractBlock,
   NotionBlock,
@@ -126,12 +127,15 @@ const extractPageTitle = (page: NotionPartialPageObjectResponse) => {
   return page.properties.title.title[0].plain_text;
 };
 
-export type NotionCrawlerOptions = {
+export type NotionMdCrawlerOptions = {
   client: Client;
   serializerStrategy?: SerializerStrategy;
 };
-export const crawler =
-  ({ client, serializerStrategy }: NotionCrawlerOptions) =>
+export type NotionMdCrawler = (
+  options: NotionMdCrawlerOptions,
+) => (rootPageId: string) => Promise<Pages>;
+export const crawler: NotionMdCrawler =
+  ({ client, serializerStrategy }) =>
   async (rootPageId: string) => {
     const rootPage = (await fetchNotionPage(client)(rootPageId)) as any;
     const rootPageTitle = extractPageTitle(rootPage);
