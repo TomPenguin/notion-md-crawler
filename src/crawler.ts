@@ -129,7 +129,7 @@ const extractPageTitle = (page: NotionPartialPageObjectResponse) => {
 
 export type NotionMdCrawlerOptions = {
   client: Client;
-  serializerStrategy?: SerializerStrategy;
+  serializerStrategy?: Partial<SerializerStrategy>;
 };
 export type NotionMdCrawler = (
   options: NotionMdCrawlerOptions,
