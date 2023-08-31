@@ -126,27 +126,29 @@ const extractPageTitle = (page: NotionPartialPageObjectResponse) => {
   return page.properties.title.title[0].plain_text;
 };
 
-export const crawl = async (
-  client: Client,
-  pageId: string,
-  serializerStrategy?: SerializerStrategy,
-) => {
-  const rootPage = (await fetchNotionPage(client)(pageId)) as any;
-  const rootPageTitle = extractPageTitle(rootPage);
-  const rootBlocks = await fetchNotionBlocks(client)(rootPage.id);
-
-  const cursor: Page = {
-    metadata: {
-      id: rootPage.id,
-      title: rootPageTitle,
-      createdTime: rootPage.created_time,
-      lastEditedTime: rootPage.last_edited_time,
-    },
-    lines: [],
-  };
-
-  return walk(client)({ ...strategy, ...serializerStrategy })(
-    rootBlocks,
-    cursor,
-  );
+export type NotionCrawlerOptions = {
+  client: Client;
+  serializerStrategy?: SerializerStrategy;
 };
+export const crawler =
+  ({ client, serializerStrategy }: NotionCrawlerOptions) =>
+  async (pageId: string) => {
+    const rootPage = (await fetchNotionPage(client)(pageId)) as any;
+    const rootPageTitle = extractPageTitle(rootPage);
+    const rootBlocks = await fetchNotionBlocks(client)(rootPage.id);
+
+    const cursor: Page = {
+      metadata: {
+        id: rootPage.id,
+        title: rootPageTitle,
+        createdTime: rootPage.created_time,
+        lastEditedTime: rootPage.last_edited_time,
+      },
+      lines: [],
+    };
+
+    return walk(client)({ ...strategy, ...serializerStrategy })(
+      rootBlocks,
+      cursor,
+    );
+  };
