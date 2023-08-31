@@ -1,5 +1,5 @@
 {
-  "name": "notion-crawler",
+  "name": "notion-md-crawler",
   "version": "1.0.0",
   "description": "A library to recursively retrieve and serialize Notion pages with customization for machine learning applications.",
   "type": "module",
@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TomPenguin/notion-crawler.git"
+    "url": "git+https://github.com/TomPenguin/notion-md-crawler.git"
   },
   "keywords": [
     "notion",
@@ -34,10 +34,10 @@
     "ai",
     "markdown"
   ],
-  "homepage": "https://github.com/TomPenguin/notion-crawler#readme",
+  "homepage": "https://github.com/TomPenguin/notion-md-crawler#readme",
   "author": "TomPenguin <tom.penguin.zoo@gmail.com> (https://github.com/TomPenguin)",
   "bugs": {
-    "url": "https://github.com/TomPenguin/notion-crawler/issues"
+    "url": "https://github.com/TomPenguin/notion-md-crawler/issues"
   },
   "license": "ISC",
   "devDependencies": {
