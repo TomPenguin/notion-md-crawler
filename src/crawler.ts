@@ -75,6 +75,7 @@ const getNest = (block: NotionBlock, baseNest: number) => {
       return 0;
 
     // Eliminates unnecessary nests due to NotionBlock structure
+    case "table":
     case "table_row":
     case "column_list":
     case "column":
