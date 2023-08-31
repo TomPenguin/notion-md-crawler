@@ -31,10 +31,20 @@ type NotionPartialPageObjectResponse = Awaited<
 const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
   collectPaginatedAPI(client.blocks.children.list, {
     block_id: blockId,
+  }).catch((err) => {
+    console.error(`Fetching Notion block failed. [blockId: ${blockId}]`);
+    console.error(err);
+
+    return [];
   });
 
 const fetchNotionPage = (client: Client) => (pageId: string) =>
-  client.pages.retrieve({ page_id: pageId });
+  client.pages.retrieve({ page_id: pageId }).catch((err) => {
+    console.error(`Fetching Notion page failed. [pageId: ${pageId}]`);
+    console.error(err);
+
+    return [];
+  });
 
 const hasType = (block: NotionBlockObjectResponse): block is NotionBlock =>
   "type" in block;
