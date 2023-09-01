@@ -1,5 +1,6 @@
 import * as md from "md-utils-ts";
-import { ExtractBlock } from "../types.js";
+import { has } from "../libs.js";
+import { ExtractBlock, ExtractProperty } from "../types.js";
 
 type NotionParagraphBlock = ExtractBlock<"paragraph">;
 type NotionRichText = NotionParagraphBlock["paragraph"]["rich_text"];
@@ -18,8 +19,8 @@ export const annotate: Annotate = (text, annotations) => {
   return text;
 };
 
-export type RichText = (richText: NotionRichText) => string;
-export const richText: RichText = (richTextObject) =>
+export type FromRichText = (richText: NotionRichText) => string;
+export const fromRichText: FromRichText = (richTextObject) =>
   richTextObject
     .map(({ plain_text, annotations, href }) => {
       if (plain_text.match(/^\s*$/)) return plain_text;
@@ -41,12 +42,12 @@ export const richText: RichText = (richTextObject) =>
     })
     .join("");
 
-export type Link = (linkObject: NotionLinkObject) => {
+export type fromLink = (linkObject: NotionLinkObject) => {
   title: string;
   href: string;
 };
-export const link: Link = (linkObject) => {
-  const caption = richText(linkObject.caption);
+export const fromLink: fromLink = (linkObject) => {
+  const caption = fromRichText(linkObject.caption);
   const href =
     linkObject.type === "external"
       ? linkObject.external.url
@@ -54,4 +55,20 @@ export const link: Link = (linkObject) => {
   const fileName = href.match(/[^\/\\&\?]+\.\w{3,4}(?=([\?&].*$|$))/);
   const title = caption.trim() ? caption : fileName ? fileName[0] : "link";
   return { title, href };
+};
+
+type NotionUserObject = ExtractProperty<"created_by">["created_by"];
+type FromUser = (_user: NotionUserObject) => string;
+export const fromUser: FromUser = (_user) => {
+  if (!has(_user, "type")) return "";
+
+  return _user.type === "person" ? `${_user.name}` : `${_user.name}[bot]`;
+};
+
+type NotionDateObject = ExtractProperty<"date">["date"];
+type FromDate = (date: NotionDateObject) => string;
+export const fromDate: FromDate = (date) => {
+  if (!date) return "";
+
+  return date.end ? `(start)${date.start}, (end): ${date.end}` : date.start;
 };

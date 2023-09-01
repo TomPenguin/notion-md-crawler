@@ -1,12 +1,13 @@
+import { defaults } from "./defaults.js";
 import { Serializers } from "./types.js";
 
 export const strategy: Serializers = {
-  checkbox: () => false,
-  created_by: () => false,
-  created_time: () => false,
-  date: () => false,
-  email: () => false,
-  files: () => false,
+  checkbox: defaults.checkbox,
+  created_by: defaults.createdBy,
+  created_time: defaults.createdTime,
+  date: defaults.date,
+  email: defaults.email,
+  files: defaults.files,
   formula: () => false,
   last_edited_by: () => false,
   last_edited_time: () => false,
@@ -19,7 +20,7 @@ export const strategy: Serializers = {
   rollup: () => false,
   select: () => false,
   status: () => false,
-  title: () => false,
+  title: defaults.title,
   unique_id: () => false,
   url: () => false,
   verification: () => false,
