@@ -1,6 +1,6 @@
 import * as md from "md-utils-ts";
+import * as utils from "../utils.js";
 import { Serializer } from "./types.js";
-import * as utils from "./utils.js";
 
 type Audio = Serializer<"audio">;
 export const audio: Audio = (block) => {

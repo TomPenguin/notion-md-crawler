@@ -1,30 +1,14 @@
 import { Client, collectPaginatedAPI } from "@notionhq/client";
 import { indent as _indent } from "md-utils-ts";
-import { strategy } from "./serializer/index.js";
-import { Serializers } from "./serializer/types.js";
+import { BlockSerializers, serializer } from "./serializer/index.js";
 import {
   NotionBlock,
   NotionBlockObjectResponse,
-  NotionClient,
-  PromiseResult,
+  NotionPage,
+  NotionProperty,
+  Page,
+  Pages,
 } from "./types.js";
-
-export type Page = {
-  metadata: {
-    id: string;
-    title: string;
-    createdTime: string;
-    lastEditedTime: string;
-    parentId?: string;
-  };
-  lines: string[];
-};
-
-export type Pages = Record<string, Page>;
-
-type NotionPageRetrieveMethod = NotionClient["pages"]["retrieve"];
-type NotionPageResponse = PromiseResult<NotionPageRetrieveMethod>;
-type NotionPageObject = Extract<NotionPageResponse, { parent: any }>;
 
 const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
   collectPaginatedAPI(client.blocks.children.list, {
@@ -81,7 +65,7 @@ const indent = _indent();
 
 const walking =
   (client: Client) =>
-  (serializers: Serializers) =>
+  (serializers: BlockSerializers) =>
   async (
     parent: Page,
     blocks: NotionBlockObjectResponse[],
@@ -151,17 +135,22 @@ const walking =
     return pages;
   };
 
-const extractPageTitle = (page: NotionPageObject) => {
-  if (!("properties" in page)) return "";
+const extractPageTitle = (page: NotionPage) => {
+  if (!has(page, "properties")) return "";
 
-  if (page.properties.title?.type !== "title") return "";
-
-  return page.properties.title.title[0].plain_text;
+  return Object.values(page.properties)
+    .filter(
+      <T extends NotionProperty>(
+        prop: T,
+      ): prop is Extract<T, { type: "title" }> => prop.type === "title",
+    )
+    .map((prop) => serializer.property.defaults.title(prop, ""))
+    .join("");
 };
 
 export type CrawlerOptions = {
   client: Client;
-  serializers?: Partial<Serializers>;
+  serializers?: Partial<BlockSerializers>;
   parentId?: string;
 };
 export type Crawler = (
@@ -180,7 +169,10 @@ export const crawler: Crawler =
     const blocks = await fetchNotionBlocks(client)(notionPage.id);
     const rootPage: Page = initPage(notionPage, title, parentId);
 
-    const walk = walking(client)({ ...strategy, ...serializers });
+    const walk = walking(client)({
+      ...serializer.block.strategy,
+      ...serializers,
+    });
     return walk(rootPage, blocks);
   };
 

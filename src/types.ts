@@ -1,14 +1,14 @@
-import { Client } from "@notionhq/client";
+export * from "./notion.types.js";
 
-export type NotionClient = InstanceType<typeof Client>;
+export type Page = {
+  metadata: {
+    id: string;
+    title: string;
+    createdTime: string;
+    lastEditedTime: string;
+    parentId?: string;
+  };
+  lines: string[];
+};
 
-type NotionBlockListMethod = NotionClient["blocks"]["children"]["list"];
-type NotionBlockListResponse = Awaited<ReturnType<NotionBlockListMethod>>;
-export type NotionBlockObjectResponse =
-  NotionBlockListResponse["results"][number];
-type ExtractBlockObjectResponse<T> = T extends { type: string } ? T : never;
-export type NotionBlock = ExtractBlockObjectResponse<NotionBlockObjectResponse>;
-export type ExtractBlock<T extends NotionBlock["type"]> = Extract<
-  NotionBlock,
-  { type: T }
->;
+export type Pages = Record<string, Page>;

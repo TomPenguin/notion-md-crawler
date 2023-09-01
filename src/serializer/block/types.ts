@@ -1,4 +1,4 @@
-import { ExtractBlock, NotionBlock } from "../types.js";
+import { ExtractBlock, NotionBlock } from "../../types.js";
 
 export type Serializer<T extends NotionBlock["type"]> = (
   block: ExtractBlock<T>,

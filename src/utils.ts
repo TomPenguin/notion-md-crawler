@@ -1,5 +1,5 @@
 import { h1 } from "md-utils-ts";
-import { Page, Pages } from "./crawler.js";
+import { Page, Pages } from "./types.js";
 
 const nestHeading = (text: string) => (text.match(/^#+\s/) ? "#" + text : text);
 
