@@ -1,5 +1,6 @@
 import { Client, collectPaginatedAPI } from "@notionhq/client";
 import { indent as _indent } from "md-utils-ts";
+import { has } from "./libs.js";
 import {
   BlockSerializers,
   PropertySerializers,
@@ -34,11 +35,6 @@ const fetchNotionDatabase = (client: Client) => (databaseId: string) =>
     .query({ database_id: databaseId })
     .then(({ results }) => results)
     .catch(() => []);
-
-const has = <T extends Object, K extends string>(
-  obj: T,
-  key: K,
-): obj is Extract<T, { [k in K]: any }> => key in obj;
 
 const blockIs = <T extends NotionBlock["type"]>(
   block: NotionBlock,
