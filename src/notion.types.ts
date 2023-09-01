@@ -21,8 +21,8 @@ export type ExtractBlock<T extends NotionBlock["type"]> = Extract<
 type NotionPageRetrieveMethod = NotionClient["pages"]["retrieve"];
 type NotionPageResponse = PromiseResult<NotionPageRetrieveMethod>;
 export type NotionPage = Extract<NotionPageResponse, { parent: any }>;
-
-export type NotionProperty = NotionPage["properties"][string];
+export type NotionProperties = NotionPage["properties"];
+export type NotionProperty = NotionProperties[string];
 export type ExtractProperty<T extends NotionProperty["type"]> = Extract<
   NotionProperty,
   { type: T }

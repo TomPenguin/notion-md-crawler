@@ -1,11 +1,17 @@
 import { Client, collectPaginatedAPI } from "@notionhq/client";
 import { indent as _indent } from "md-utils-ts";
-import { BlockSerializers, serializer } from "./serializer/index.js";
+import {
+  BlockSerializers,
+  PropertySerializers,
+  Serializers,
+  serializer,
+} from "./serializer/index.js";
+import { DELIMITER } from "./serializer/property/defaults.js";
+import { propertiesSerializer } from "./serializer/property/index.js";
 import {
   NotionBlock,
   NotionBlockObjectResponse,
   NotionPage,
-  NotionProperty,
   Page,
   Pages,
 } from "./types.js";
@@ -44,7 +50,12 @@ type PageLike = {
   created_time: string;
   last_edited_time: string;
 };
-const initPage = (page: PageLike, title: string, parentId?: string): Page => ({
+const initPage = (
+  page: PageLike,
+  title: string,
+  parentId?: string,
+  properties?: string[],
+): Page => ({
   metadata: {
     id: page.id,
     title,
@@ -52,6 +63,7 @@ const initPage = (page: PageLike, title: string, parentId?: string): Page => ({
     lastEditedTime: page.last_edited_time,
     parentId,
   },
+  properties: properties || [],
   lines: [],
 });
 
@@ -65,7 +77,7 @@ const indent = _indent();
 
 const walking =
   (client: Client) =>
-  (serializers: BlockSerializers) =>
+  (serializers: Serializers) =>
   async (
     parent: Page,
     blocks: NotionBlockObjectResponse[],
@@ -78,9 +90,8 @@ const walking =
     for (const block of blocks) {
       if (!has(block, "type")) continue;
 
-      // Serialize Block
-      const serializer = serializers[block.type];
-      const text = serializer(block as any);
+      const serializeBlock = serializers.block[block.type];
+      const text = serializeBlock(block as any);
 
       if (text !== false) {
         const line = indent(text, depth);
@@ -138,19 +149,30 @@ const walking =
 const extractPageTitle = (page: NotionPage) => {
   if (!has(page, "properties")) return "";
 
-  return Object.values(page.properties)
-    .filter(
-      <T extends NotionProperty>(
-        prop: T,
-      ): prop is Extract<T, { type: "title" }> => prop.type === "title",
-    )
-    .map((prop) => serializer.property.defaults.title(prop, ""))
-    .join("");
+  let title = "";
+
+  for (const [name, prop] of Object.entries(page.properties)) {
+    if (prop.type !== "title") continue;
+
+    const text = serializer.property.defaults.title(name, prop) as string;
+    title = text.split(DELIMITER)[1];
+  }
+
+  return title;
 };
 
+const mergeSerializers = (serializers?: OptionalSerializers): Serializers => ({
+  block: { ...serializer.block.strategy, ...serializers?.block },
+  property: { ...serializer.property.strategy, ...serializers?.property },
+});
+
+type OptionalSerializers = {
+  block?: Partial<BlockSerializers>;
+  property?: Partial<PropertySerializers>;
+};
 export type CrawlerOptions = {
   client: Client;
-  serializers?: Partial<BlockSerializers>;
+  serializers?: OptionalSerializers;
   parentId?: string;
 };
 export type Crawler = (
@@ -165,14 +187,15 @@ export const crawler: Crawler =
       return {};
     }
 
-    const title = extractPageTitle(notionPage);
-    const blocks = await fetchNotionBlocks(client)(notionPage.id);
-    const rootPage: Page = initPage(notionPage, title, parentId);
+    const _serializers = mergeSerializers(serializers);
 
-    const walk = walking(client)({
-      ...serializer.block.strategy,
-      ...serializers,
-    });
+    const title = extractPageTitle(notionPage);
+    const serializeProps = propertiesSerializer(_serializers.property);
+    const props = serializeProps(notionPage.properties);
+    const blocks = await fetchNotionBlocks(client)(notionPage.id);
+    const rootPage: Page = initPage(notionPage, title, parentId, props);
+
+    const walk = walking(client)(_serializers);
     return walk(rootPage, blocks);
   };
 

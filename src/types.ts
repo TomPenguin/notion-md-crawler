@@ -8,6 +8,7 @@ export type Page = {
     lastEditedTime: string;
     parentId?: string;
   };
+  properties: string[];
   lines: string[];
 };
 
