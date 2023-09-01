@@ -9,8 +9,8 @@ dependencies:
     specifier: ^2.2.12
     version: 2.2.12
   md-utils-ts:
-    specifier: ^1.0.4
-    version: 1.0.4
+    specifier: ^2.0.0
+    version: 2.0.0
 
 devDependencies:
   prettier:
@@ -620,14 +620,8 @@ packages:
     resolution: {integrity: sha512-HDWXG8isMntAyRF5vZ7xKuEvOhT4AhlRt/3czTSjvGUxjYCBVRQY48ViDHyfYz9VIoBkW4TMGQNapx+l3RUwdA==}
     dev: true
 
-  /markdown-table@3.0.3:
-    resolution: {integrity: sha512-Z1NL3Tb1M9wH4XESsCDEksWoKTdlUafKc4pt0GRwjUyXaCFZ+dc3g2erqB6zm3szA2IUSi7VnPI+o/9jnxh9hw==}
-    dev: false
-
-  /md-utils-ts@1.0.4:
-    resolution: {integrity: sha512-RW09NtsRLCqJasXdbgTIG7BjWM8ET5PWip/19O5Ilw1Jph1WJn2IFh6Th0UzNq3Q+jtqx87hzWMy4SpsSxqfgA==}
-    dependencies:
-      markdown-table: 3.0.3
+  /md-utils-ts@2.0.0:
+    resolution: {integrity: sha512-sMG6JtX0ebcRMHxYTcmgsh0/m6o8hGdQHFE2OgjvflRZlQM51CGGj/uuk056D+12BlCiW0aTpt/AdlDNtgQiew==}
     dev: false
 
   /merge-stream@2.0.0:

@@ -48,6 +48,6 @@
   },
   "dependencies": {
     "@notionhq/client": "^2.2.12",
-    "md-utils-ts": "^1.0.4"
+    "md-utils-ts": "^2.0.0"
   }
 }
