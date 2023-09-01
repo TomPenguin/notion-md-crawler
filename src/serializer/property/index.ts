@@ -7,6 +7,8 @@ export default { defaults, strategy };
 
 export const propertiesSerializer =
   (serializers: Serializers) => (props: NotionProperties) =>
-    Object.entries(props)
-      .map(([key, prop]) => serializers[prop.type](key, prop as any))
-      .filter((text): text is string => text !== false);
+    Promise.all(
+      Object.entries(props).map(([key, prop]) =>
+        serializers[prop.type](key, prop as any),
+      ),
+    ).then((texts) => texts.filter((text): text is string => text !== false));

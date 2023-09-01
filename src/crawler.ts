@@ -91,7 +91,7 @@ const walking =
       if (!has(block, "type")) continue;
 
       const serializeBlock = serializers.block[block.type];
-      const text = serializeBlock(block as any);
+      const text = await serializeBlock(block as any);
 
       if (text !== false) {
         const line = indent(text, depth);
@@ -191,7 +191,7 @@ export const crawler: Crawler =
 
     const title = extractPageTitle(notionPage);
     const serializeProps = propertiesSerializer(_serializers.property);
-    const props = serializeProps(notionPage.properties);
+    const props = await serializeProps(notionPage.properties);
     const blocks = await fetchNotionBlocks(client)(notionPage.id);
     const rootPage: Page = initPage(notionPage, title, parentId, props);
 
