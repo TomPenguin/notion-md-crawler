@@ -37,12 +37,7 @@ const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
   });
 
 const fetchNotionPage = (client: Client) => (pageId: string) =>
-  client.pages.retrieve({ page_id: pageId }).catch((err) => {
-    console.error(`Fetching Notion page failed. [pageId: ${pageId}]`);
-    console.error(err);
-
-    return [];
-  });
+  client.pages.retrieve({ page_id: pageId });
 
 const fetchNotionDatabase = (client: Client) => (databaseId: string) =>
   client.databases
@@ -50,8 +45,10 @@ const fetchNotionDatabase = (client: Client) => (databaseId: string) =>
     .then(({ results }) => results)
     .catch(() => []);
 
-const hasType = (block: NotionBlockObjectResponse): block is NotionBlock =>
-  "type" in block;
+const has = <T extends Object, K extends string>(
+  obj: T,
+  key: K,
+): obj is Extract<T, { [k in K]: any }> => key in obj;
 
 const blockIs = <T extends NotionBlock["type"]>(
   block: NotionBlock,
@@ -95,7 +92,7 @@ const walking =
     pages[parent.metadata.id] = pages[parent.metadata.id] || parent;
 
     for (const block of blocks) {
-      if (!hasType(block)) continue;
+      if (!has(block, "type")) continue;
 
       // Serialize Block
       const serializer = serializers[block.type];
@@ -173,14 +170,18 @@ export type Crawler = (
 export const crawler: Crawler =
   ({ client, serializers, parentId }) =>
   async (rootPageId: string) => {
-    const rootPage = (await fetchNotionPage(client)(rootPageId)) as any;
-    const rootPageTitle = extractPageTitle(rootPage);
-    const rootBlocks = await fetchNotionBlocks(client)(rootPage.id);
+    const notionPage = await fetchNotionPage(client)(rootPageId);
+    if (!has(notionPage, "parent")) {
+      console.error("Unintended Notion Page object.");
+      return {};
+    }
 
-    const parent: Page = initPage(rootPage, rootPageTitle, parentId);
+    const title = extractPageTitle(notionPage);
+    const blocks = await fetchNotionBlocks(client)(notionPage.id);
+    const rootPage: Page = initPage(notionPage, title, parentId);
 
     const walk = walking(client)({ ...strategy, ...serializers });
-    return walk(parent, rootBlocks);
+    return walk(rootPage, blocks);
   };
 
 export type DatabaseCrawler = (
