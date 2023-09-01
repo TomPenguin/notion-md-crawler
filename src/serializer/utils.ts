@@ -60,15 +60,16 @@ export const fromLink: fromLink = (linkObject) => {
 type NotionUserObject = ExtractProperty<"created_by">["created_by"];
 type FromUser = (_user: NotionUserObject) => string;
 export const fromUser: FromUser = (_user) => {
-  if (!has(_user, "type")) return "";
+  if (!has(_user, "type")) return "<empty>";
 
-  return _user.type === "person" ? `${_user.name}` : `${_user.name}[bot]`;
+  const name = _user.name ?? "<empty>";
+  return _user.type === "person" ? `${name}` : `${name}[bot]`;
 };
 
 type NotionDateObject = ExtractProperty<"date">["date"];
 type FromDate = (date: NotionDateObject) => string;
 export const fromDate: FromDate = (date) => {
-  if (!date) return "";
+  if (!date) return "<empty>";
 
   return date.end ? `(start)${date.start}, (end): ${date.end}` : date.start;
 };
