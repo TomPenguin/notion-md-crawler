@@ -7,7 +7,6 @@ import {
   Serializers,
   serializer,
 } from "./serializer/index.js";
-import { DELIMITER } from "./serializer/property/defaults.js";
 import { propertiesSerializer } from "./serializer/property/index.js";
 import {
   NotionBlock,
@@ -147,11 +146,11 @@ const extractPageTitle = (page: NotionPage) => {
 
   let title = "";
 
-  for (const [name, prop] of Object.entries(page.properties)) {
+  for (const prop of Object.values(page.properties)) {
     if (prop.type !== "title") continue;
 
-    const text = serializer.property.defaults.title(name, prop) as string;
-    title = text.split(DELIMITER)[1];
+    const text = serializer.property.defaults.title("", prop) as string;
+    title = text.replace("[] ", "");
   }
 
   return title;
