@@ -1,12 +1,12 @@
 # notion-md-crawler
 
-A library to recursively retrieve and serialize Notion pages with customization for machine learning applications.
+A library to recursively retrieve and serialize Notion pages and databases with customization for machine learning applications.
 
 [![NPM Version](https://badge.fury.io/js/notion-md-crawler.svg)](https://www.npmjs.com/package/notion-md-crawler)
 
 ## Features
 
-- **Recursively Retrieve Pages**: Dig deep into Notion's hierarchical structure with ease.
+- **Crawling Pages and Databases**: Dig deep into Notion's hierarchical structure with ease.
 - **Serialize to Markdown**: Seamlessly convert Notion pages to Markdown for easy use in machine learning and other.
 - **Custom Serialization**: Adapt the serialization process to fit your specific machine learning needs.
 - **User-Friendly**: Built with customization and usability in mind, and it's type safe.
@@ -76,6 +76,7 @@ type Page = {
     lastEditedTime: string;
     parentId?: string;
   };
+  properties: string[];
   lines: string[];
 };
 ```
@@ -93,13 +94,13 @@ Since `crawler` returns `Page` objects and `Page` object contain metadata, you c
 You can define your own custom serializer. You can also use the utility function for convenience.
 
 ```ts
-import { crawler, serializer, Serializer } from "notion-md-crawler";
+import { BlockSerializer, crawler, serializer } from "notion-md-crawler";
 
-const customEmbedSerializer: Serializer<"embed"> = (block) => {
+const customEmbedSerializer: BlockSerializer<"embed"> = (block) => {
   if (block.embed.url) return "";
 
   // You can use serializer utility.
-  const caption = serializer.utils.richText(block.embed.caption);
+  const caption = serializer.utils.fromRichText(block.embed.caption);
 
   return `<figure>
   <iframe src="${block.embed.url}"></iframe>
@@ -108,7 +109,9 @@ const customEmbedSerializer: Serializer<"embed"> = (block) => {
 };
 
 const serializers = {
-  embed: customEmbedSerializer,
+  block: {
+    embed: customEmbedSerializer,
+  },
 };
 
 const crawl = crawler({ client, serializers });
@@ -119,8 +122,8 @@ const crawl = crawler({ client, serializers });
 Returning `false` in the serializer allows you to skip the serialize of that block. This is useful when you want to omit unnecessary information.
 
 ```ts
-const image: serializer.Serializer<"image"> = () => false;
-const crawl = crawler({ client, serializers: { image } });
+const image: BlockSerializer<"image"> = () => false;
+const crawl = crawler({ client, serializers: { block: { image } } });
 ```
 
 ### Advanced: Use default serializer in custom serializer
@@ -128,13 +131,13 @@ const crawl = crawler({ client, serializers: { image } });
 If you want to customize serialization only in specific cases, you can use the default serializer in a custom serializer.
 
 ```ts
-import { crawler, serializer } from "notion-md-crawler";
+import { BlockSerializer, crawler, serializer } from "notion-md-crawler";
 
-const defaultImageSerializer = serializer.defaults.image;
+const defaultImageSerializer = serializer.block.defaults.image;
 
-const customImageSerializer: serializer.Serializer<"image"> = (block) => {
+const customImageSerializer: BlockSerializer<"image"> = (block) => {
   // Utility function to retrieve the link
-  const { title, href } = serializer.utils.link(block.image);
+  const { title, href } = serializer.utils.fromLink(block.image);
 
   // If the image is from a specific domain, wrap it in a special div
   if (href.includes("special-domain.com")) {
@@ -148,11 +151,79 @@ const customImageSerializer: serializer.Serializer<"image"> = (block) => {
 };
 
 const serializers = {
-  image: customImageSerializer,
+  block: {
+    image: customImageSerializer,
+  },
 };
 
 const crawl = crawler({ client, serializers });
 ```
+
+## Supported Blocks and Database properties
+
+### Blocks
+
+| Block Type         | Supported |
+| ------------------ | --------- |
+| Text               | ✅ Yes    |
+| Bookmark           | ✅ Yes    |
+| Bulleted List      | ✅ Yes    |
+| Numbered List      | ✅ Yes    |
+| Heading 1          | ✅ Yes    |
+| Heading 2          | ✅ Yes    |
+| Heading 3          | ✅ Yes    |
+| Quote              | ✅ Yes    |
+| Callout            | ✅ Yes    |
+| Equation (block)   | ✅ Yes    |
+| Equation (inline)  | ✅ Yes    |
+| Todos (checkboxes) | ✅ Yes    |
+| Table Of Contents  | ✅ Yes    |
+| Divider            | ✅ Yes    |
+| Column             | ✅ Yes    |
+| Column List        | ✅ Yes    |
+| Toggle             | ✅ Yes    |
+| Image              | ✅ Yes    |
+| Embed              | ✅ Yes    |
+| Video              | ✅ Yes    |
+| Figma              | ✅ Yes    |
+| Google Maps        | ✅ Yes    |
+| Google Drive       | ✅ Yes    |
+| Tweet              | ✅ Yes    |
+| PDF                | ✅ Yes    |
+| Audio              | ✅ Yes    |
+| File               | ✅ Yes    |
+| Link               | ✅ Yes    |
+| Page Link          | ✅ Yes    |
+| External Page Link | ✅ Yes    |
+| Code (block)       | ✅ Yes    |
+| Code (inline)      | ✅ Yes    |
+
+### Database Properties
+
+| Property Type    | Supported |
+| ---------------- | --------- |
+| Checkbox         | ✅ Yes    |
+| Created By       | ✅ Yes    |
+| Created Time     | ✅ Yes    |
+| Date             | ✅ Yes    |
+| Email            | ✅ Yes    |
+| Files            | ✅ Yes    |
+| Formula          | ✅ Yes    |
+| Last Edited By   | ✅ Yes    |
+| Last Edited Time | ✅ Yes    |
+| Multi Select     | ✅ Yes    |
+| Number           | ✅ Yes    |
+| People           | ✅ Yes    |
+| Phone Number     | ✅ Yes    |
+| Relation         | ✅ Yes    |
+| Rich Text        | ✅ Yes    |
+| Rollup           | ✅ Yes    |
+| Select           | ✅ Yes    |
+| Status           | ✅ Yes    |
+| Title            | ✅ Yes    |
+| Unique Id        | ✅ Yes    |
+| Url              | ✅ Yes    |
+| Verification     | □ No      |
 
 ## Issues and Feedback
 

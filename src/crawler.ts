@@ -173,6 +173,31 @@ export type CrawlerOptions = {
 export type Crawler = (
   options: CrawlerOptions,
 ) => (rootPageId: string) => Promise<Pages>;
+
+/**
+ * `crawler` is a higher-order function that returns a function designed to crawl through Notion pages.
+ * It utilizes given client, optional serializers, and an optional parentId to customize its operation.
+ *
+ * @param {CrawlerOptions} options - The crawler options which contains:
+ *  - client: An instance of the Notion client.
+ *  - serializers?: An optional object that can be used to define custom serializers for blocks and properties.
+ *  - parentId?: An optional parent ID which, if provided, associates the resulting pages with the given parent.
+ *
+ * @returns {Function} A function that takes a rootPageId (the ID of the main Notion page to start crawling from) and returns a Promise resolving to the crawled Pages.
+ *
+ * @example
+ * // Initialize the crawler with options.
+ * const crawl = crawler({ client: myClient });
+ *
+ * // Use the initialized crawler.
+ * crawl("someRootPageId")
+ *   .then((pages) => {
+ *     console.log("Crawled pages:", pages);
+ *   })
+ *   .catch((error) => {
+ *     console.error("Error during crawling:", error);
+ *   });
+ */
 export const crawler: Crawler =
   ({ client, serializers, parentId }) =>
   async (rootPageId: string) => {
@@ -194,6 +219,20 @@ export const crawler: Crawler =
     return walk(rootPage, blocks);
   };
 
+/**
+ * `dbCrawler` is specifically designed to crawl Notion databases. This function retrieves all records in a database and then
+ * utilizes the `crawler` function for each individual record.
+ *
+ * Note: When working with a root page that is a database, use `dbCrawler` instead of the regular `crawler`.
+ *
+ * @param {CrawlerOptions} options - The options necessary for the crawl operation, which includes:
+ *   - client: The Notion client used for making requests.
+ *   - serializers: Optional serializers for block and property.
+ *   - parentId: Optional parent ID.
+ *
+ * @returns {Function} A function that takes a `databaseId` and returns a promise that resolves to a `Pages` object, which is a collection of
+ * all the pages found within the specified Notion database.
+ */
 export type DatabaseCrawler = (
   options: CrawlerOptions,
 ) => (databaseId: string) => Promise<Pages>;
