@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --sourcemap",
     "prepublishOnly": "pnpm run build",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
+    "test": "jest"
   },
   "repository": {
     "type": "git",

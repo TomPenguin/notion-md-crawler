@@ -6,7 +6,7 @@ export default {
   transform: {
     "^.+\\.tsx?$": [
       "esbuild-jest",
-      { sourceMap: true, format: "esm", target: "es2022" },
+      { sourceMap: true, format: "cjs", target: "es2022" },
     ],
   },
 };
