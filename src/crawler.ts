@@ -1,17 +1,17 @@
 import { Client, collectPaginatedAPI } from "@notionhq/client";
 import { indent as _indent } from "md-utils-ts";
 import { has } from "./libs.js";
-import {
-  BlockSerializers,
-  PropertySerializers,
-  Serializers,
-  serializer,
-} from "./serializer/index.js";
+import { Serializers, serializer } from "./serializer/index.js";
 import { propertiesSerializer } from "./serializer/property/index.js";
 import {
+  Crawler,
+  CrawlerOptions,
+  CrawlingResult,
+  FailurePage,
   NotionBlock,
   NotionBlockObjectResponse,
   NotionPage,
+  OptionalSerializers,
   Page,
   Pages,
 } from "./types.js";
@@ -19,12 +19,7 @@ import {
 const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
   collectPaginatedAPI(client.blocks.children.list, {
     block_id: blockId,
-  }).catch((err) => {
-    console.error(`Fetching Notion block failed. [blockId: ${blockId}]`);
-    console.error(err);
-
-    return [];
-  });
+  }).catch(() => []);
 
 const fetchNotionPage = (client: Client) => (pageId: string) =>
   client.pages.retrieve({ page_id: pageId });
@@ -78,67 +73,78 @@ const walking =
     blocks: NotionBlockObjectResponse[],
     pages: Pages = {},
     depth = 0,
-  ): Promise<Pages> => {
+    failures: FailurePage[] = [],
+  ): Promise<CrawlingResult> => {
     const walk = walking(client)(serializers);
     pages[parent.metadata.id] = pages[parent.metadata.id] || parent;
 
     for (const block of blocks) {
-      if (!has(block, "type")) continue;
+      try {
+        if (!has(block, "type")) continue;
 
-      const serializeBlock = serializers.block[block.type];
-      const text = await serializeBlock(block as any);
+        const serializeBlock = serializers.block[block.type];
+        const text = await serializeBlock(block as any);
 
-      if (text !== false) {
-        const line = indent(text, depth);
-        parent.lines.push(line);
-      }
+        if (text !== false) {
+          const line = indent(text, depth);
+          parent.lines.push(line);
+        }
 
-      if (blockIs(block, "synced_block")) {
-        // Specify the sync destination block id
-        const blockId = block.synced_block.synced_from?.block_id || block.id;
-        const blocks = await fetchNotionBlocks(client)(blockId);
-        const _pages = await walk(parent, blocks, pages, depth);
+        if (blockIs(block, "synced_block")) {
+          // Specify the sync destination block id
+          const blockId = block.synced_block.synced_from?.block_id || block.id;
+          const blocks = await fetchNotionBlocks(client)(blockId);
+          const result = await walk(parent, blocks, pages, depth, failures);
 
-        pages = { ...pages, ..._pages };
+          pages = { ...pages, ...result.pages };
+          failures = failures.concat(result.failures);
 
-        continue;
-      }
+          continue;
+        }
 
-      if (blockIs(block, "child_page")) {
-        const { title } = block.child_page;
-        const _parent = initPage(block, title, parent.metadata.id);
-        const _blocks = await fetchNotionBlocks(client)(block.id);
-        const _pages = await walk(_parent, _blocks, pages, 0);
+        if (blockIs(block, "child_page")) {
+          const { title } = block.child_page;
+          const _parent = initPage(block, title, parent.metadata.id);
+          const _blocks = await fetchNotionBlocks(client)(block.id);
+          const result = await walk(_parent, _blocks, pages, 0, failures);
 
-        pages = { ...pages, ..._pages };
+          pages = { ...pages, ...result.pages };
+          failures = failures.concat(result.failures);
 
-        continue;
-      }
+          continue;
+        }
 
-      if (blockIs(block, "child_database")) {
-        const { title } = block.child_database;
-        pages[block.id] = initPage(block, title, parent.metadata.id);
-        const crawlDB = dbCrawler({ client, serializers });
-        const _pages = await crawlDB(block.id);
+        if (blockIs(block, "child_database")) {
+          const { title } = block.child_database;
+          pages[block.id] = initPage(block, title, parent.metadata.id);
+          const crawlDB = dbCrawler({ client, serializers });
+          const result = await crawlDB(block.id);
 
-        pages = { ...pages, ..._pages };
+          pages = { ...pages, ...result.pages };
+          failures = failures.concat(result.failures);
 
-        continue;
-      }
+          continue;
+        }
 
-      if (block.has_children) {
-        const _blocks = await fetchNotionBlocks(client)(block.id);
-        const { type } = block;
-        const _depth = IGNORE_NEST_LIST.includes(type) ? depth : depth + 1;
-        const _pages = await walk(parent, _blocks, pages, _depth);
+        if (block.has_children) {
+          const _blocks = await fetchNotionBlocks(client)(block.id);
+          const { type } = block;
+          const _depth = IGNORE_NEST_LIST.includes(type) ? depth : depth + 1;
+          const result = await walk(parent, _blocks, pages, _depth, failures);
 
-        pages = { ...pages, ..._pages };
-
-        continue;
+          pages = { ...pages, ...result.pages };
+          failures = failures.concat(result.failures);
+        }
+      } catch (err) {
+        const reason =
+          err instanceof Error
+            ? `${err.name}: ${err.message}\n${err.stack}`
+            : `${err}`;
+        failures.push({ id: block.id, parentId: parent.metadata.id, reason });
       }
     }
 
-    return pages;
+    return { pages, failures };
   };
 
 const extractPageTitle = (page: NotionPage) => {
@@ -161,19 +167,6 @@ const mergeSerializers = (serializers?: OptionalSerializers): Serializers => ({
   property: { ...serializer.property.strategy, ...serializers?.property },
 });
 
-type OptionalSerializers = {
-  block?: Partial<BlockSerializers>;
-  property?: Partial<PropertySerializers>;
-};
-export type CrawlerOptions = {
-  client: Client;
-  serializers?: OptionalSerializers;
-  parentId?: string;
-};
-export type Crawler = (
-  options: CrawlerOptions,
-) => (rootPageId: string) => Promise<Pages>;
-
 /**
  * `crawler` is a higher-order function that returns a function designed to crawl through Notion pages.
  * It utilizes given client, optional serializers, and an optional parentId to customize its operation.
@@ -191,8 +184,8 @@ export type Crawler = (
  *
  * // Use the initialized crawler.
  * crawl("someRootPageId")
- *   .then((pages) => {
- *     console.log("Crawled pages:", pages);
+ *   .then((result) => {
+ *     console.log("Crawled pages:", result.pages);
  *   })
  *   .catch((error) => {
  *     console.error("Error during crawling:", error);
@@ -203,8 +196,8 @@ export const crawler: Crawler =
   async (rootPageId: string) => {
     const notionPage = await fetchNotionPage(client)(rootPageId);
     if (!has(notionPage, "parent")) {
-      console.error("Unintended Notion Page object.");
-      return {};
+      const reason = "Unintended Notion Page object.";
+      return { pages: {}, failures: [{ id: rootPageId, parentId, reason }] };
     }
 
     const _serializers = mergeSerializers(serializers);
@@ -235,17 +228,20 @@ export const crawler: Crawler =
  */
 export type DatabaseCrawler = (
   options: CrawlerOptions,
-) => (databaseId: string) => Promise<Pages>;
-export const dbCrawler: DatabaseCrawler = (options) => async (databaseId) => {
-  const crawl = crawler({ ...options, parentId: databaseId });
-  const records = await fetchNotionDatabase(options.client)(databaseId);
+) => (rootDatabaseId: string) => Promise<CrawlingResult>;
+export const dbCrawler: DatabaseCrawler =
+  (options) => async (rootDatabaseId) => {
+    const crawl = crawler({ ...options, parentId: rootDatabaseId });
+    const records = await fetchNotionDatabase(options.client)(rootDatabaseId);
 
-  let context: Pages = {};
+    let pages: Pages = {};
+    let failures: FailurePage[] = [];
 
-  for (const record of records) {
-    const pages = await crawl(record.id);
-    context = { ...context, ...pages };
-  }
+    for (const record of records) {
+      const result = await crawl(record.id);
+      pages = { ...pages, ...result.pages };
+      failures = failures.concat(result.failures);
+    }
 
-  return context;
-};
+    return { pages, failures };
+  };

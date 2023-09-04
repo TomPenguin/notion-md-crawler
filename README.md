@@ -36,8 +36,8 @@ const crawl = crawler({ client });
 
 const main = async () => {
   const rootPageId = "****";
-  const pages = await crawl(rootPageId);
-  const result = pagesToString(pages);
+  const result = await crawl(rootPageId);
+  const result = pagesToString(result.pages);
 };
 
 main();
@@ -47,17 +47,72 @@ main();
 
 ### crawler
 
+Recursively crawl the Notion Page. [`dbCrawler`](#dbcrawler) should be used if the Root is a Notion Database.
+
+> Note: It tries to continue crawling as much as possible even if it fails to retrieve a particular Notion Page.
+
 #### Parameters:
 
-- `options.client` (NotionClient): Notion client.
-- `options.serializers` (Serializers, Optional): Used to customize the serializer.
+- `options` ([`CrawlerOptions`](#optionscrawleroptions)): Crawler options.
 - `rootPageId` (string): Id of the root page to be crawled.
 
 #### Returns:
 
-- `Promise<Pages>`: `Pages` object resulting from recursively parsing Notion pages.
+- `Promise<CrawlingResult>`: Crawling results with failed information.
 
-### `Pages` Object
+### dbCrawler
+
+Recursively crawl the Notion Database. [`crawler`](#crawler) should be used if the Root is a Notion Page.
+
+#### Parameters:
+
+- `options` ([`CrawlerOptions`](#optionscrawleroptions)): Crawler options.
+- `rootDatabaseId` (string): Id of the root page to be crawled.
+
+#### Returns:
+
+- `Promise<CrawlingResult>`: Crawling results with failed information.
+
+### Options(`CrawlerOptions`)
+
+#### `client`
+
+Instance of Notion Client. Set up an instance of the Client class imported from `@notionhq/client`.
+
+#### `serializers` (optional)
+
+Used for custom serialization of Block and Property objects. For more information, see [Custom Serialization](#custom-serialization).
+
+- `serializers.block` ([`BlockSerializers`](#blockserializers), optional): Map of Notion block type and [`BlockSerializer`](#blockserializer).
+- `serializers.property` ([`PropertySerializers`](#propertyserializers), optional): Map of Notion Property Type and [`PropertySerializer`](#propertyserializer)
+
+#### `BlockSerializers`
+
+Map with Notion block type (like `"heading_1"`, `"to_do"`, `"code"`) as key and [`BlockSerializer`](#blockserializer) as value.
+
+#### `BlockSerializer`
+
+BlockSerializer that takes a Notion block object as argument. Returning `false` will skip serialization of that Notion block.
+
+```ts
+type BlockSerializer = (block: NotionBlock) => string | false;
+```
+
+#### `PropertySerializers`
+
+Map with Notion Property Type (like `"heading_1"`, `"to_do"`, `"code"`) as key and [`PropertySerializer`](#propertyserializer) as value.
+
+#### `PropertySerializer`
+
+PropertySerializer that takes a Notion property object as argument. Returning `false` will skip serialization of that Notion property.
+
+```ts
+type PropertySerializer = (name: string, block: NotionBlock) => string | false;
+```
+
+### Objects
+
+#### `Pages`
 
 Key is page id, value is `Page` Object.
 
@@ -65,7 +120,9 @@ Key is page id, value is `Page` Object.
 type Pages = <string, Page>;
 ```
 
-### `Page` Object
+#### `Page`
+
+Notion Page analysis results including metadata and properties.
 
 ```ts
 type Page = {
@@ -78,6 +135,17 @@ type Page = {
   };
   properties: string[];
   lines: string[];
+};
+```
+
+#### `CrawlingResult`
+
+Crawling results with information on failed pages.
+
+```ts
+type CrawlingResult = {
+  pages: Pages;
+  failures: FailurePage[];
 };
 ```
 
@@ -186,9 +254,6 @@ const crawl = crawler({ client, serializers });
 | Embed              | ✅ Yes    |
 | Video              | ✅ Yes    |
 | Figma              | ✅ Yes    |
-| Google Maps        | ✅ Yes    |
-| Google Drive       | ✅ Yes    |
-| Tweet              | ✅ Yes    |
 | PDF                | ✅ Yes    |
 | Audio              | ✅ Yes    |
 | File               | ✅ Yes    |
