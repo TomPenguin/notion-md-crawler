@@ -15,18 +15,22 @@ export type Page = {
   lines: string[];
 };
 
-export type Pages = Record<string, Page>;
-
-export type FailurePage = {
-  id: string;
+export type CrawlingFailure = {
   parentId?: string;
   reason: string;
 };
 
-export type CrawlingResult = {
-  pages: Pages;
-  failures: FailurePage[];
-};
+export type CrawlingResult =
+  | {
+      id: string;
+      success: true;
+      page: Page;
+    }
+  | {
+      id: string;
+      success: false;
+      failure: CrawlingFailure;
+    };
 
 export type OptionalSerializers = {
   block?: Partial<BlockSerializers>;
@@ -41,4 +45,8 @@ export type CrawlerOptions = {
 
 export type Crawler = (
   options: CrawlerOptions,
-) => (rootPageId: string) => Promise<CrawlingResult>;
+) => (rootPageId: string) => AsyncGenerator<CrawlingResult>;
+
+export type DBCrawler = (
+  options: CrawlerOptions,
+) => (rootDatabaseId: string) => AsyncGenerator<CrawlingResult>;

@@ -25,9 +25,11 @@ npm install notion-md-crawler @notionhq/client
 
 > ⚠️ Note: Before getting started, create [an integration and find the token](https://www.notion.so/my-integrations). Details on methods can be found in [API section](https://github.com/souvikinator/notion-to-md#api)
 
+Leveraging the power of JavaScript generators, this library is engineered to handle even the most extensive Notion documents with ease. It's designed to yield results page-by-page, allowing for efficient memory usage and real-time processing.
+
 ```ts
 import { Client } from "@notionhq/client";
-import { crawler, pagesToString } from "notion-md-crawler";
+import { crawler, pageToString } from "notion-md-crawler";
 
 // Need init notion client with credential.
 const client = new Client({ auth: process.env.NOTION_API_KEY });
@@ -36,8 +38,12 @@ const crawl = crawler({ client });
 
 const main = async () => {
   const rootPageId = "****";
-  const result = await crawl(rootPageId);
-  const result = pagesToString(result.pages);
+  for await (const result of crawl(rootPageId)) {
+    if (result.success) {
+      const pageText = pageToString(result.page);
+      console.log(pageText);
+    }
+  }
 };
 
 main();
@@ -58,7 +64,7 @@ Recursively crawl the Notion Page. [`dbCrawler`](#dbcrawler) should be used if t
 
 #### Returns:
 
-- `Promise<CrawlingResult>`: Crawling results with failed information.
+- `AsyncGenerator<CrawlingResult>`: Crawling results with failed information.
 
 ### dbCrawler
 
@@ -108,45 +114,6 @@ PropertySerializer that takes a Notion property object as argument. Returning `f
 
 ```ts
 type PropertySerializer = (name: string, block: NotionBlock) => string | false;
-```
-
-### Objects
-
-#### `Pages`
-
-Key is page id, value is `Page` Object.
-
-```ts
-type Pages = <string, Page>;
-```
-
-#### `Page`
-
-Notion Page analysis results including metadata and properties.
-
-```ts
-type Page = {
-  metadata: {
-    id: string;
-    title: string;
-    createdTime: string;
-    lastEditedTime: string;
-    parentId?: string;
-  };
-  properties: string[];
-  lines: string[];
-};
-```
-
-#### `CrawlingResult`
-
-Crawling results with information on failed pages.
-
-```ts
-type CrawlingResult = {
-  pages: Pages;
-  failures: FailurePage[];
-};
 ```
 
 ## Use Metadata

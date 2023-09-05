@@ -1,5 +1,5 @@
 import { h1 } from "md-utils-ts";
-import { Page, Pages } from "./types.js";
+import { Crawler, CrawlingResult, DBCrawler, Page } from "./types.js";
 
 const nestHeading = (text: string) => (text.match(/^#+\s/) ? "#" + text : text);
 
@@ -21,15 +21,39 @@ export const pageToString = ({ metadata, properties, lines }: Page): string => {
   return [title, data, ...body].join("\n");
 };
 
+type Crawling =
+  | ReturnType<ReturnType<Crawler>>
+  | ReturnType<ReturnType<DBCrawler>>;
+
 /**
- * `pagesToString` transforms a `Pages` object (a record of page IDs to `Page` objects) into a record of strings.
- * Each page is transformed into its string representation using the `pageToString` function.
+ * Asynchronously waits for all results from a given crawling operation and collects them into an array.
+ * This function is compatible with both `Crawler` and `DBCrawler` types.
  *
- * @param {Pages} pages - A record of page IDs to `Page` objects.
+ * @param {Crawling} crawling - A generator function that yields crawling results. It can be an instance of `Crawler` or `DBCrawler`.
  *
- * @returns {Record<string, string>} A record where each key is a page ID and each value is the string representation of the corresponding page.
+ * @returns {Promise<CrawlingResult[]>} A Promise that resolves to an array of `CrawlingResult` objects, which contain the results of the crawling operation.
+ *
+ * @example
+ * // Initialize a Crawler or DBCrawler instance
+ * const crawl = crawler({ client: myClient });
+ * // OR
+ * const dbCrawl = dbCrawler({ client: myDbClient });
+ *
+ * // Wait for all results and collect them
+ * waitAllResults(crawl("someRootPageId"))
+ *   .then((allResults) => {
+ *     console.log("All crawled results:", allResults);
+ *   })
+ *   .catch((error) => {
+ *     console.error("Error during crawling:", error);
+ *   });
  */
-export const pagesToString = (pages: Pages): Record<string, string> =>
-  Object.fromEntries(
-    Object.entries(pages).map(([pageId, page]) => [pageId, pageToString(page)]),
-  );
+export const waitAllResults = async (crawling: Crawling) => {
+  const results: CrawlingResult[] = [];
+
+  for await (const result of crawling) {
+    results.push(result);
+  }
+
+  return results;
+};

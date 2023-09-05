@@ -5,15 +5,13 @@ import { Serializers, serializer } from "./serializer/index.js";
 import { propertiesSerializer } from "./serializer/property/index.js";
 import {
   Crawler,
-  CrawlerOptions,
   CrawlingResult,
-  FailurePage,
+  DBCrawler,
   NotionBlock,
   NotionBlockObjectResponse,
   NotionPage,
   OptionalSerializers,
   Page,
-  Pages,
 } from "./types.js";
 
 const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
@@ -65,18 +63,13 @@ const IGNORE_NEST_LIST = ["table", "table_row", "column_list", "column"];
 
 const indent = _indent();
 
-const walking =
-  (client: Client) =>
-  (serializers: Serializers) =>
-  async (
+const walking = (client: Client) => (serializers: Serializers) =>
+  async function* (
     parent: Page,
     blocks: NotionBlockObjectResponse[],
-    pages: Pages = {},
     depth = 0,
-    failures: FailurePage[] = [],
-  ): Promise<CrawlingResult> => {
+  ): AsyncGenerator<CrawlingResult> {
     const walk = walking(client)(serializers);
-    pages[parent.metadata.id] = pages[parent.metadata.id] || parent;
 
     for (const block of blocks) {
       try {
@@ -94,10 +87,8 @@ const walking =
           // Specify the sync destination block id
           const blockId = block.synced_block.synced_from?.block_id || block.id;
           const blocks = await fetchNotionBlocks(client)(blockId);
-          const result = await walk(parent, blocks, pages, depth, failures);
 
-          pages = { ...pages, ...result.pages };
-          failures = failures.concat(result.failures);
+          yield* walk(parent, blocks, depth);
 
           continue;
         }
@@ -106,22 +97,19 @@ const walking =
           const { title } = block.child_page;
           const _parent = initPage(block, title, parent.metadata.id);
           const _blocks = await fetchNotionBlocks(client)(block.id);
-          const result = await walk(_parent, _blocks, pages, 0, failures);
 
-          pages = { ...pages, ...result.pages };
-          failures = failures.concat(result.failures);
+          yield* walk(_parent, _blocks, 0);
+          yield { id: _parent.metadata.id, success: true, page: _parent };
 
           continue;
         }
 
         if (blockIs(block, "child_database")) {
           const { title } = block.child_database;
-          pages[block.id] = initPage(block, title, parent.metadata.id);
-          const crawlDB = dbCrawler({ client, serializers });
-          const result = await crawlDB(block.id);
+          const dbPage = initPage(block, title, parent.metadata.id);
 
-          pages = { ...pages, ...result.pages };
-          failures = failures.concat(result.failures);
+          yield* dbCrawler({ client, serializers })(block.id);
+          yield { id: block.id, success: true, page: dbPage };
 
           continue;
         }
@@ -130,21 +118,19 @@ const walking =
           const _blocks = await fetchNotionBlocks(client)(block.id);
           const { type } = block;
           const _depth = IGNORE_NEST_LIST.includes(type) ? depth : depth + 1;
-          const result = await walk(parent, _blocks, pages, _depth, failures);
 
-          pages = { ...pages, ...result.pages };
-          failures = failures.concat(result.failures);
+          yield* walk(parent, _blocks, _depth);
         }
       } catch (err) {
         const reason =
           err instanceof Error
             ? `${err.name}: ${err.message}\n${err.stack}`
             : `${err}`;
-        failures.push({ id: block.id, parentId: parent.metadata.id, reason });
+
+        const parentId = parent.metadata.id;
+        yield { id: block.id, success: false, failure: { parentId, reason } };
       }
     }
-
-    return { pages, failures };
   };
 
 const extractPageTitle = (page: NotionPage) => {
@@ -176,40 +162,43 @@ const mergeSerializers = (serializers?: OptionalSerializers): Serializers => ({
  *  - serializers?: An optional object that can be used to define custom serializers for blocks and properties.
  *  - parentId?: An optional parent ID which, if provided, associates the resulting pages with the given parent.
  *
- * @returns {Function} A function that takes a rootPageId (the ID of the main Notion page to start crawling from) and returns a Promise resolving to the crawled Pages.
+ * @returns {Function} A generator function that takes a `rootPageId` (the ID of the starting Notion page) and yields a Promise that resolves to the crawled pages or an error object.
  *
  * @example
  * // Initialize the crawler with options.
  * const crawl = crawler({ client: myClient });
  *
- * // Use the initialized crawler.
- * crawl("someRootPageId")
- *   .then((result) => {
- *     console.log("Crawled pages:", result.pages);
- *   })
- *   .catch((error) => {
- *     console.error("Error during crawling:", error);
- *   });
+ * // Use the initialized crawler
+ * for await (const result of crawl("someRootPageId")) {
+ *   if (result.success) {
+ *     console.log("Crawled page:", result.page);
+ *   } else {
+ *     console.error("Crawling failed:", result.failure);
+ *   }
+ * }
  */
-export const crawler: Crawler =
-  ({ client, serializers, parentId }) =>
-  async (rootPageId: string) => {
+export const crawler: Crawler = ({ client, serializers, parentId }) =>
+  async function* (rootPageId) {
     const notionPage = await fetchNotionPage(client)(rootPageId);
     if (!has(notionPage, "parent")) {
       const reason = "Unintended Notion Page object.";
-      return { pages: {}, failures: [{ id: rootPageId, parentId, reason }] };
+
+      return yield {
+        id: rootPageId,
+        success: false,
+        failure: { parentId, reason },
+      };
     }
 
     const _serializers = mergeSerializers(serializers);
-
     const title = extractPageTitle(notionPage);
     const serializeProps = propertiesSerializer(_serializers.property);
     const props = await serializeProps(notionPage.properties);
     const blocks = await fetchNotionBlocks(client)(notionPage.id);
-    const rootPage: Page = initPage(notionPage, title, parentId, props);
+    const rootPage = initPage(notionPage, title, parentId, props);
 
-    const walk = walking(client)(_serializers);
-    return walk(rootPage, blocks);
+    yield* walking(client)(_serializers)(rootPage, blocks);
+    yield { id: rootPageId, success: true, page: rootPage };
   };
 
 /**
@@ -226,22 +215,12 @@ export const crawler: Crawler =
  * @returns {Function} A function that takes a `databaseId` and returns a promise that resolves to a `Pages` object, which is a collection of
  * all the pages found within the specified Notion database.
  */
-export type DatabaseCrawler = (
-  options: CrawlerOptions,
-) => (rootDatabaseId: string) => Promise<CrawlingResult>;
-export const dbCrawler: DatabaseCrawler =
-  (options) => async (rootDatabaseId) => {
+export const dbCrawler: DBCrawler = (options) =>
+  async function* (rootDatabaseId) {
     const crawl = crawler({ ...options, parentId: rootDatabaseId });
     const records = await fetchNotionDatabase(options.client)(rootDatabaseId);
 
-    let pages: Pages = {};
-    let failures: FailurePage[] = [];
-
     for (const record of records) {
-      const result = await crawl(record.id);
-      pages = { ...pages, ...result.pages };
-      failures = failures.concat(result.failures);
+      yield* crawl(record.id);
     }
-
-    return { pages, failures };
   };
