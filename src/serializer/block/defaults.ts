@@ -1,178 +1,231 @@
 import * as md from "md-utils-ts";
 import { fromLink, fromRichText } from "../utils.js";
-import { Serializer } from "./types.js";
+import { FactoryOptions, SerializerFactory } from "./types.js";
 
-type Audio = Serializer<"audio">;
-export const audio: Audio = (block) => {
-  const { title, href } = fromLink(block.audio);
-  return md.anchor(title, href);
-};
+type Audio = SerializerFactory<"audio">;
+export const audio: Audio =
+  ({ urlMask }) =>
+  (block) => {
+    const { title, href } = fromLink(block.audio);
+    return md.anchor(title, urlMask || href);
+  };
 
-type Bookmark = Serializer<"bookmark">;
-export const bookmark: Bookmark = (block) =>
-  md.anchor(fromRichText(block.bookmark.caption), block.bookmark.url);
+type Bookmark = SerializerFactory<"bookmark">;
+export const bookmark: Bookmark =
+  ({ urlMask }) =>
+  (block) =>
+    md.anchor(
+      fromRichText(block.bookmark.caption),
+      urlMask || block.bookmark.url,
+    );
 
-type Breadcrumb = Serializer<"breadcrumb">;
-export const breadcrumb: Breadcrumb = () => false;
+type Breadcrumb = SerializerFactory<"breadcrumb">;
+export const breadcrumb: Breadcrumb = () => () => false;
 
-type BulletedListItem = Serializer<"bulleted_list_item">;
-export const bulletedListItem: BulletedListItem = (block) =>
-  md.bullet(fromRichText(block.bulleted_list_item.rich_text));
+type BulletedListItem = SerializerFactory<"bulleted_list_item">;
+export const bulletedListItem: BulletedListItem =
+  ({ urlMask }) =>
+  (block) =>
+    md.bullet(fromRichText(block.bulleted_list_item.rich_text, urlMask));
 
-type Callout = Serializer<"callout">;
-export const callout: Callout = (block) =>
-  md.quote(fromRichText(block.callout.rich_text));
+type Callout = SerializerFactory<"callout">;
+export const callout: Callout =
+  ({ urlMask }) =>
+  (block) =>
+    md.quote(fromRichText(block.callout.rich_text, urlMask));
 
-type ChildPage = Serializer<"child_page">;
-export const childPage: ChildPage = (block) => `[${block.child_page.title}]`;
+type ChildPage = SerializerFactory<"child_page">;
+export const childPage: ChildPage = () => (block) =>
+  `[${block.child_page.title}]`;
 
-type ChildDatabase = Serializer<"child_database">;
-export const childDatabase: ChildDatabase = (block) =>
+type ChildDatabase = SerializerFactory<"child_database">;
+export const childDatabase: ChildDatabase = () => (block) =>
   `[${block.child_database.title}]`;
 
-type Code = Serializer<"code">;
-export const code: Code = (block) =>
-  md.codeBlock(block.code.language)(fromRichText(block.code.rich_text));
+type Code = SerializerFactory<"code">;
+export const code: Code =
+  ({ urlMask }) =>
+  (block) =>
+    md.codeBlock(block.code.language)(
+      fromRichText(block.code.rich_text, urlMask),
+    );
 
-type Column = Serializer<"column">;
-export const column: Column = () => false;
+type Column = SerializerFactory<"column">;
+export const column: Column = () => () => false;
 
-type ColumnList = Serializer<"column_list">;
-export const columnList: ColumnList = () => false;
+type ColumnList = SerializerFactory<"column_list">;
+export const columnList: ColumnList = () => () => false;
 
-type Divider = Serializer<"divider">;
-export const divider: Divider = () => md.hr();
+type Divider = SerializerFactory<"divider">;
+export const divider: Divider = () => () => md.hr();
 
-type Embed = Serializer<"embed">;
-export const embed: Embed = (block) => {
-  const caption = fromRichText(block.embed.caption);
-  return md.anchor(caption, block.embed.url);
-};
+type Embed = SerializerFactory<"embed">;
+export const embed: Embed =
+  ({ urlMask }) =>
+  (block) => {
+    const caption = fromRichText(block.embed.caption, urlMask);
+    return md.anchor(caption, urlMask || block.embed.url);
+  };
 
-type Equation = Serializer<"equation">;
-export const equation: Equation = (block) =>
+type Equation = SerializerFactory<"equation">;
+export const equation: Equation = () => (block) =>
   md.equationBlock(block.equation.expression);
 
-type File = Serializer<"file">;
-export const file: File = (block) => {
-  const { title, href } = fromLink(block.file);
-  return md.anchor(title, href);
-};
+type File = SerializerFactory<"file">;
+export const file: File =
+  ({ urlMask }) =>
+  (block) => {
+    const { title, href } = fromLink(block.file);
+    return md.anchor(title, urlMask || href);
+  };
 
-type Heading1 = Serializer<"heading_1">;
-export const heading1: Heading1 = (block) =>
-  md.h1(fromRichText(block.heading_1.rich_text));
+type Heading1 = SerializerFactory<"heading_1">;
+export const heading1: Heading1 =
+  ({ urlMask }) =>
+  (block) =>
+    md.h1(fromRichText(block.heading_1.rich_text, urlMask));
 
-type Heading2 = Serializer<"heading_2">;
-export const heading2: Heading2 = (block) =>
-  md.h2(fromRichText(block.heading_2.rich_text));
+type Heading2 = SerializerFactory<"heading_2">;
+export const heading2: Heading2 =
+  ({ urlMask }) =>
+  (block) =>
+    md.h2(fromRichText(block.heading_2.rich_text, urlMask));
 
-type Heading3 = Serializer<"heading_3">;
-export const heading3: Heading3 = (block) =>
-  md.h3(fromRichText(block.heading_3.rich_text));
+type Heading3 = SerializerFactory<"heading_3">;
+export const heading3: Heading3 =
+  ({ urlMask }) =>
+  (block) =>
+    md.h3(fromRichText(block.heading_3.rich_text, urlMask));
 
-type Image = Serializer<"image">;
-export const image: Image = (block) => {
-  const { title, href } = fromLink(block.image);
-  return md.image(title, href);
-};
+type Image = SerializerFactory<"image">;
+export const image: Image =
+  ({ urlMask }) =>
+  (block) => {
+    const { title, href } = fromLink(block.image);
+    return md.image(title, urlMask || href);
+  };
 
-type LinkPreview = Serializer<"link_preview">;
-export const linkPreview: LinkPreview = (block) =>
-  md.anchor(block.type, block.link_preview.url);
+type LinkPreview = SerializerFactory<"link_preview">;
+export const linkPreview: LinkPreview =
+  ({ urlMask }) =>
+  (block) =>
+    md.anchor(block.type, urlMask || block.link_preview.url);
 
-type LinkToPage = Serializer<"link_to_page">;
-export const linkToPage: LinkToPage = (block) => {
-  const href =
-    block.link_to_page.type === "page_id" ? block.link_to_page.page_id : "";
-  return md.anchor(block.type, href);
-};
+type LinkToPage = SerializerFactory<"link_to_page">;
+export const linkToPage: LinkToPage =
+  ({ urlMask }) =>
+  (block) => {
+    const href =
+      block.link_to_page.type === "page_id" ? block.link_to_page.page_id : "";
+    return md.anchor(block.type, urlMask || href);
+  };
 
-type NumberedListItem = Serializer<"numbered_list_item">;
-export const numberedListItem: NumberedListItem = (block) =>
-  md.bullet(fromRichText(block.numbered_list_item.rich_text), 1);
+type NumberedListItem = SerializerFactory<"numbered_list_item">;
+export const numberedListItem: NumberedListItem =
+  ({ urlMask }) =>
+  (block) =>
+    md.bullet(fromRichText(block.numbered_list_item.rich_text, urlMask), 1);
 
-type Paragraph = Serializer<"paragraph">;
-export const paragraph: Paragraph = (block) =>
-  fromRichText(block.paragraph.rich_text);
+type Paragraph = SerializerFactory<"paragraph">;
+export const paragraph: Paragraph =
+  ({ urlMask }) =>
+  (block) =>
+    fromRichText(block.paragraph.rich_text, urlMask);
 
-type PDF = Serializer<"pdf">;
-export const pdf: PDF = (block) => {
-  const { title, href } = fromLink(block.pdf);
-  return md.anchor(title, href);
-};
+type PDF = SerializerFactory<"pdf">;
+export const pdf: PDF =
+  ({ urlMask }) =>
+  (block) => {
+    const { title, href } = fromLink(block.pdf);
+    return md.anchor(title, urlMask || href);
+  };
 
-type Quote = Serializer<"quote">;
-export const quote: Quote = (block) =>
-  md.quote(fromRichText(block.quote.rich_text));
+type Quote = SerializerFactory<"quote">;
+export const quote: Quote =
+  ({ urlMask }) =>
+  (block) =>
+    md.quote(fromRichText(block.quote.rich_text, urlMask));
 
-type SyncedBlock = Serializer<"synced_block">;
-export const syncedBlock: SyncedBlock = () => false;
+type SyncedBlock = SerializerFactory<"synced_block">;
+export const syncedBlock: SyncedBlock = () => () => false;
 
-type Table = Serializer<"table">;
-export const table: Table = () => false;
+type Table = SerializerFactory<"table">;
+export const table: Table = () => () => false;
 
-type TableOfContents = Serializer<"table_of_contents">;
-export const tableOfContents: TableOfContents = () => false;
+type TableOfContents = SerializerFactory<"table_of_contents">;
+export const tableOfContents: TableOfContents = () => () => false;
 
-type TableRow = Serializer<"table_row">;
-export const tableRow: TableRow = (block) =>
-  `| ${block.table_row.cells
-    .flatMap((row) => row.map((column) => fromRichText([column])))
-    .join(" | ")} |`;
+type TableRow = SerializerFactory<"table_row">;
+export const tableRow: TableRow =
+  ({ urlMask }) =>
+  (block) =>
+    `| ${block.table_row.cells
+      .flatMap((row) => row.map((column) => fromRichText([column], urlMask)))
+      .join(" | ")} |`;
 
-type Template = Serializer<"template">;
-export const template: Template = (block) =>
-  fromRichText(block.template.rich_text);
+type Template = SerializerFactory<"template">;
+export const template: Template =
+  ({ urlMask }) =>
+  (block) =>
+    fromRichText(block.template.rich_text, urlMask);
 
-type ToDo = Serializer<"to_do">;
-export const toDo: ToDo = (block) =>
-  md.todo(fromRichText(block.to_do.rich_text), block.to_do.checked);
+type ToDo = SerializerFactory<"to_do">;
+export const toDo: ToDo =
+  ({ urlMask }) =>
+  (block) =>
+    md.todo(fromRichText(block.to_do.rich_text, urlMask), block.to_do.checked);
 
-type Toggle = Serializer<"toggle">;
-export const toggle: Toggle = (block) => fromRichText(block.toggle.rich_text);
+type Toggle = SerializerFactory<"toggle">;
+export const toggle: Toggle =
+  ({ urlMask }) =>
+  (block) =>
+    fromRichText(block.toggle.rich_text, urlMask);
 
-type Unsupported = Serializer<"unsupported">;
-export const unsupported: Unsupported = () => false;
+type Unsupported = SerializerFactory<"unsupported">;
+export const unsupported: Unsupported = () => () => false;
 
-type Video = Serializer<"video">;
-export const video: Video = (block) => {
-  const { title, href } = fromLink(block.video);
-  return md.anchor(title, href);
-};
+type Video = SerializerFactory<"video">;
+export const video: Video =
+  ({ urlMask }) =>
+  (block) => {
+    const { title, href } = fromLink(block.video);
+    return md.anchor(title, urlMask || href);
+  };
 
-export const defaults = {
-  audio,
-  bookmark,
-  breadcrumb,
-  bulletedListItem,
-  callout,
-  childDatabase,
-  childPage,
-  code,
-  column,
-  columnList,
-  divider,
-  embed,
-  equation,
-  file,
-  heading1,
-  heading2,
-  heading3,
-  image,
-  linkPreview,
-  linkToPage,
-  numberedListItem,
-  paragraph,
-  pdf,
-  quote,
-  syncedBlock,
-  table,
-  tableOfContents,
-  tableRow,
-  template,
-  toDo,
-  toggle,
-  unsupported,
-  video,
-};
+export const factory = (options: FactoryOptions) => ({
+  audio: audio(options),
+  bookmark: bookmark(options),
+  breadcrumb: breadcrumb(options),
+  bulleted_list_item: bulletedListItem(options),
+  callout: callout(options),
+  child_database: childDatabase(options),
+  child_page: childPage(options),
+  code: code(options),
+  column: column(options),
+  column_list: columnList(options),
+  divider: divider(options),
+  embed: embed(options),
+  equation: equation(options),
+  file: file(options),
+  heading_1: heading1(options),
+  heading_2: heading2(options),
+  heading_3: heading3(options),
+  image: image(options),
+  link_preview: linkPreview(options),
+  link_to_page: linkToPage(options),
+  numbered_list_item: numberedListItem(options),
+  paragraph: paragraph(options),
+  pdf: pdf(options),
+  quote: quote(options),
+  synced_block: syncedBlock(options),
+  table: table(options),
+  table_of_contents: tableOfContents(options),
+  table_row: tableRow(options),
+  template: template(options),
+  to_do: toDo(options),
+  toggle: toggle(options),
+  unsupported: unsupported(options),
+  video: video(options),
+});
+
+export const defaults = factory({ urlMask: false });

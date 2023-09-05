@@ -40,6 +40,7 @@ export type OptionalSerializers = {
 export type CrawlerOptions = {
   client: Client;
   serializers?: OptionalSerializers;
+  urlMask?: string | false;
   parentId?: string;
 };
 

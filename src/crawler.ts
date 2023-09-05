@@ -148,9 +148,15 @@ const extractPageTitle = (page: NotionPage) => {
   return title;
 };
 
-const mergeSerializers = (serializers?: OptionalSerializers): Serializers => ({
-  block: { ...serializer.block.strategy, ...serializers?.block },
-  property: { ...serializer.property.strategy, ...serializers?.property },
+const mergeSerializers = (
+  urlMask: string | false,
+  serializers?: OptionalSerializers,
+): Serializers => ({
+  block: { ...serializer.block.strategy({ urlMask }), ...serializers?.block },
+  property: {
+    ...serializer.property.strategy({ urlMask }),
+    ...serializers?.property,
+  },
 });
 
 /**
@@ -177,7 +183,12 @@ const mergeSerializers = (serializers?: OptionalSerializers): Serializers => ({
  *   }
  * }
  */
-export const crawler: Crawler = ({ client, serializers, parentId }) =>
+export const crawler: Crawler = ({
+  client,
+  serializers,
+  parentId,
+  urlMask = false,
+}) =>
   async function* (rootPageId) {
     const notionPage = await fetchNotionPage(client)(rootPageId);
     if (!has(notionPage, "parent")) {
@@ -190,7 +201,7 @@ export const crawler: Crawler = ({ client, serializers, parentId }) =>
       };
     }
 
-    const _serializers = mergeSerializers(serializers);
+    const _serializers = mergeSerializers(urlMask, serializers);
     const title = extractPageTitle(notionPage);
     const serializeProps = propertiesSerializer(_serializers.property);
     const props = await serializeProps(notionPage.properties);

@@ -32,7 +32,10 @@ export const annotate: Annotate = (text, annotations) => {
   return text;
 };
 
-export type FromRichText = (richText: NotionRichText) => string;
+export type FromRichText = (
+  richText: NotionRichText,
+  urlMask?: string | false,
+) => string;
 
 /**
  * `fromRichText` transforms a Notion-rich text object into a plain string representation, preserving annotations such as bold, italic, etc., and links (hrefs).
@@ -45,7 +48,7 @@ export type FromRichText = (richText: NotionRichText) => string;
  *
  * @returns {string} A transformed string representation of the provided Notion-rich text object.
  */
-export const fromRichText: FromRichText = (richTextObject) =>
+export const fromRichText: FromRichText = (richTextObject, urlMask = false) =>
   richTextObject
     .map(({ plain_text, annotations, href }) => {
       if (plain_text.match(/^\s*$/)) return plain_text;
@@ -61,7 +64,9 @@ export const fromRichText: FromRichText = (richTextObject) =>
       if (text === "") return leading_space + trailing_space;
 
       const annotatedText = annotate(text, annotations);
-      const linkedText = href ? md.anchor(annotatedText, href) : annotatedText;
+      const linkedText = href
+        ? md.anchor(annotatedText, urlMask || href)
+        : annotatedText;
 
       return leading_space + linkedText + trailing_space;
     })

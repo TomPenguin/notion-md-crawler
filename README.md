@@ -4,24 +4,36 @@ A library to recursively retrieve and serialize Notion pages and databases with 
 
 [![NPM Version](https://badge.fury.io/js/notion-md-crawler.svg)](https://www.npmjs.com/package/notion-md-crawler)
 
-## Features
+## 🌟 Features
 
-- **Crawling Pages and Databases**: Dig deep into Notion's hierarchical structure with ease.
-- **Serialize to Markdown**: Seamlessly convert Notion pages to Markdown for easy use in machine learning and other.
-- **Custom Serialization**: Adapt the serialization process to fit your specific machine learning needs.
-- **User-Friendly**: Built with customization and usability in mind, and it's type safe.
+- **🕷️ Crawling Pages and Databases**: Dig deep into Notion's hierarchical structure with ease.
+- **📝 Serialize to Markdown**: Seamlessly convert Notion pages to Markdown for easy use in machine learning and other.
+- **🛠️ Custom Serialization**: Adapt the serialization process to fit your specific machine learning needs.
+- **⏳ Async Generator**: Yields results on a page-by-page basis, so even huge documents can be made memory efficient.
 
-## Installation
+## 🛠️ Installation
 
 [`@notionhq/client`](https://github.com/makenotion/notion-sdk-js) must also be installed.
 
-Using npm:
+Using npm 📦:
 
 ```bash
 npm install notion-md-crawler @notionhq/client
 ```
 
-## Quick Start
+Using yarn 🧶:
+
+```bash
+yarn add notion-md-crawler @notionhq/client
+```
+
+Using pnpm 🚀:
+
+```bash
+pnpm add notion-md-crawler @notionhq/client
+```
+
+## 🚀 Quick Start
 
 > ⚠️ Note: Before getting started, create [an integration and find the token](https://www.notion.so/my-integrations). Details on methods can be found in [API section](https://github.com/souvikinator/notion-to-md#api)
 
@@ -49,7 +61,7 @@ const main = async () => {
 main();
 ```
 
-## API
+## 🌐 API
 
 ### crawler
 
@@ -72,25 +84,22 @@ Recursively crawl the Notion Database. [`crawler`](#crawler) should be used if t
 
 #### Parameters:
 
-- `options` ([`CrawlerOptions`](#optionscrawleroptions)): Crawler options.
+- `options` ([`CrawlerOptions`](#crawleroptions)): Crawler options.
 - `rootDatabaseId` (string): Id of the root page to be crawled.
 
 #### Returns:
 
-- `Promise<CrawlingResult>`: Crawling results with failed information.
+- `AsyncGenerator<CrawlingResult>`: Crawling results with failed information.
 
-### Options(`CrawlerOptions`)
+### CrawlerOptions
 
-#### `client`
-
-Instance of Notion Client. Set up an instance of the Client class imported from `@notionhq/client`.
-
-#### `serializers` (optional)
-
-Used for custom serialization of Block and Property objects. For more information, see [Custom Serialization](#custom-serialization).
-
-- `serializers.block` ([`BlockSerializers`](#blockserializers), optional): Map of Notion block type and [`BlockSerializer`](#blockserializer).
-- `serializers.property` ([`PropertySerializers`](#propertyserializers), optional): Map of Notion Property Type and [`PropertySerializer`](#propertyserializer)
+| Option                   | Description                                                                                         | Type                                          | Default     |
+| ------------------------ | --------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------- |
+| `client`                 | Instance of Notion Client. Set up an instance of the Client class imported from `@notionhq/client`. | Notion Client                                 | -           |
+| `serializers?`           | Used for custom serialization of Block and Property objects.                                        | Object                                        | `undefined` |
+| `serializers?.block?`    | Map of Notion block type and [`BlockSerializer`](#blockserializer).                                 | [`BlockSerializers`](#blockserializers)       | `undefined` |
+| `serializers?.property?` | Map of Notion Property Type and [`PropertySerializer`](#propertyserializer).                        | [`PropertySerializers`](#propertyserializers) | `undefined` |
+| `urlMask?`               | If specified, the url is masked with the string.                                                    | string \| false                               | `false`     |
 
 #### `BlockSerializers`
 
@@ -116,11 +125,11 @@ PropertySerializer that takes a Notion property object as argument. Returning `f
 type PropertySerializer = (name: string, block: NotionBlock) => string | false;
 ```
 
-## Use Metadata
+## 📊 Use Metadata
 
 Since `crawler` returns `Page` objects and `Page` object contain metadata, you can be used it for machine learning.
 
-## Custom Serialization
+## 🛠️ Custom Serialization
 
 `notion-md-crawler` gives you the flexibility to customize the serialization logic for various Notion objects to cater to the unique requirements of your machine learning model or any other use case.
 
@@ -194,7 +203,7 @@ const serializers = {
 const crawl = crawler({ client, serializers });
 ```
 
-## Supported Blocks and Database properties
+## 🔍 Supported Blocks and Database properties
 
 ### Blocks
 
@@ -257,11 +266,11 @@ const crawl = crawler({ client, serializers });
 | Url              | ✅ Yes    |
 | Verification     | □ No      |
 
-## Issues and Feedback
+## 💬 Issues and Feedback
 
 For any issues, feedback, or feature requests, please file an issue on GitHub.
 
-## License
+## 📜 License
 
 MIT
 
