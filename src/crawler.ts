@@ -7,6 +7,7 @@ import {
   Crawler,
   CrawlingResult,
   DBCrawler,
+  MetadataBuilder,
   NotionBlock,
   NotionBlockObjectResponse,
   NotionPage,
@@ -33,27 +34,30 @@ const blockIs = <T extends NotionBlock["type"]>(
   type: T,
 ): block is Extract<NotionBlock, { type: T }> => block.type === type;
 
-type PageLike = {
-  id: string;
-  created_time: string;
-  last_edited_time: string;
-};
-const initPage = (
-  page: PageLike,
-  title: string,
-  parentId?: string,
-  properties?: string[],
-): Page => ({
-  metadata: {
-    id: page.id,
-    title,
-    createdTime: page.created_time,
-    lastEditedTime: page.last_edited_time,
-    parentId,
-  },
-  properties: properties || [],
-  lines: [],
-});
+const pageInit =
+  (metadataBuilder?: MetadataBuilder) =>
+  async (
+    page: NotionPage | NotionBlock,
+    title: string,
+    parent?: Page,
+    properties?: string[],
+  ): Promise<Page> => {
+    const metadata = metadataBuilder
+      ? await metadataBuilder({ page, title, properties, parent })
+      : {
+          id: page.id,
+          title,
+          createdTime: page.created_time,
+          lastEditedTime: page.last_edited_time,
+          parentId: parent?.metadata.id,
+        };
+
+    return {
+      metadata,
+      properties: properties || [],
+      lines: [],
+    };
+  };
 
 /**
  * List of block types that do not need to be nested.
@@ -63,75 +67,80 @@ const IGNORE_NEST_LIST = ["table", "table_row", "column_list", "column"];
 
 const indent = _indent();
 
-const walking = (client: Client) => (serializers: Serializers) =>
-  async function* (
-    parent: Page,
-    blocks: NotionBlockObjectResponse[],
-    depth = 0,
-  ): AsyncGenerator<CrawlingResult> {
-    const walk = walking(client)(serializers);
+const walking =
+  (client: Client) =>
+  (serializers: Serializers) =>
+  (metadataBuilder?: MetadataBuilder) =>
+    async function* (
+      parent: Page,
+      blocks: NotionBlockObjectResponse[],
+      depth = 0,
+    ): AsyncGenerator<CrawlingResult> {
+      const walk = walking(client)(serializers)(metadataBuilder);
+      const initPage = pageInit(metadataBuilder);
 
-    for (const block of blocks) {
-      try {
-        if (!has(block, "type")) continue;
+      for (const block of blocks) {
+        try {
+          if (!has(block, "type")) continue;
 
-        const serializeBlock = serializers.block[block.type];
-        const text = await serializeBlock(block as any);
+          const serializeBlock = serializers.block[block.type];
+          const text = await serializeBlock(block as any);
 
-        if (text !== false) {
-          const line = indent(text, depth);
-          parent.lines.push(line);
+          if (text !== false) {
+            const line = indent(text, depth);
+            parent.lines.push(line);
+          }
+
+          if (blockIs(block, "synced_block")) {
+            // Specify the sync destination block id
+            const blockId =
+              block.synced_block.synced_from?.block_id || block.id;
+            const blocks = await fetchNotionBlocks(client)(blockId);
+
+            yield* walk(parent, blocks, depth);
+
+            continue;
+          }
+
+          if (blockIs(block, "child_page")) {
+            const { title } = block.child_page;
+            const _parent = await initPage(block, title, parent);
+            const _blocks = await fetchNotionBlocks(client)(block.id);
+
+            yield* walk(_parent, _blocks, 0);
+            yield { id: _parent.metadata.id, success: true, page: _parent };
+
+            continue;
+          }
+
+          if (blockIs(block, "child_database")) {
+            const { title } = block.child_database;
+            const dbPage = await initPage(block, title, parent);
+
+            yield* dbCrawler({ client, serializers, parent: dbPage })(block.id);
+            yield { id: block.id, success: true, page: dbPage };
+
+            continue;
+          }
+
+          if (block.has_children) {
+            const _blocks = await fetchNotionBlocks(client)(block.id);
+            const { type } = block;
+            const _depth = IGNORE_NEST_LIST.includes(type) ? depth : depth + 1;
+
+            yield* walk(parent, _blocks, _depth);
+          }
+        } catch (err) {
+          const reason =
+            err instanceof Error
+              ? `${err.name}: ${err.message}\n${err.stack}`
+              : `${err}`;
+
+          const parentId = parent.metadata.id;
+          yield { id: block.id, success: false, failure: { parentId, reason } };
         }
-
-        if (blockIs(block, "synced_block")) {
-          // Specify the sync destination block id
-          const blockId = block.synced_block.synced_from?.block_id || block.id;
-          const blocks = await fetchNotionBlocks(client)(blockId);
-
-          yield* walk(parent, blocks, depth);
-
-          continue;
-        }
-
-        if (blockIs(block, "child_page")) {
-          const { title } = block.child_page;
-          const _parent = initPage(block, title, parent.metadata.id);
-          const _blocks = await fetchNotionBlocks(client)(block.id);
-
-          yield* walk(_parent, _blocks, 0);
-          yield { id: _parent.metadata.id, success: true, page: _parent };
-
-          continue;
-        }
-
-        if (blockIs(block, "child_database")) {
-          const { title } = block.child_database;
-          const dbPage = initPage(block, title, parent.metadata.id);
-
-          yield* dbCrawler({ client, serializers })(block.id);
-          yield { id: block.id, success: true, page: dbPage };
-
-          continue;
-        }
-
-        if (block.has_children) {
-          const _blocks = await fetchNotionBlocks(client)(block.id);
-          const { type } = block;
-          const _depth = IGNORE_NEST_LIST.includes(type) ? depth : depth + 1;
-
-          yield* walk(parent, _blocks, _depth);
-        }
-      } catch (err) {
-        const reason =
-          err instanceof Error
-            ? `${err.name}: ${err.message}\n${err.stack}`
-            : `${err}`;
-
-        const parentId = parent.metadata.id;
-        yield { id: block.id, success: false, failure: { parentId, reason } };
       }
-    }
-  };
+    };
 
 const extractPageTitle = (page: NotionPage) => {
   if (!has(page, "properties")) return "";
@@ -166,7 +175,7 @@ const mergeSerializers = (
  * @param {CrawlerOptions} options - The crawler options which contains:
  *  - client: An instance of the Notion client.
  *  - serializers?: An optional object that can be used to define custom serializers for blocks and properties.
- *  - parentId?: An optional parent ID which, if provided, associates the resulting pages with the given parent.
+ *  - urlMask?: If specified, the url is masked with the string.
  *
  * @returns {Function} A generator function that takes a `rootPageId` (the ID of the starting Notion page) and yields a Promise that resolves to the crawled pages or an error object.
  *
@@ -186,8 +195,9 @@ const mergeSerializers = (
 export const crawler: Crawler = ({
   client,
   serializers,
-  parentId,
+  parent,
   urlMask = false,
+  metadataBuilder,
 }) =>
   async function* (rootPageId) {
     const notionPage = await fetchNotionPage(client)(rootPageId);
@@ -197,18 +207,21 @@ export const crawler: Crawler = ({
       return yield {
         id: rootPageId,
         success: false,
-        failure: { parentId, reason },
+        failure: { parentId: parent?.metadata.id, reason },
       };
     }
 
+    // Preparation Before Exploring
     const _serializers = mergeSerializers(urlMask, serializers);
     const title = extractPageTitle(notionPage);
     const serializeProps = propertiesSerializer(_serializers.property);
     const props = await serializeProps(notionPage.properties);
     const blocks = await fetchNotionBlocks(client)(notionPage.id);
-    const rootPage = initPage(notionPage, title, parentId, props);
+    const initPage = pageInit(metadataBuilder);
+    const rootPage = await initPage(notionPage, title, parent, props);
+    const walk = walking(client)(_serializers)(metadataBuilder);
 
-    yield* walking(client)(_serializers)(rootPage, blocks);
+    yield* walk(rootPage, blocks);
     yield { id: rootPageId, success: true, page: rootPage };
   };
 
@@ -219,16 +232,16 @@ export const crawler: Crawler = ({
  * Note: When working with a root page that is a database, use `dbCrawler` instead of the regular `crawler`.
  *
  * @param {CrawlerOptions} options - The options necessary for the crawl operation, which includes:
- *   - client: The Notion client used for making requests.
- *   - serializers: Optional serializers for block and property.
- *   - parentId: Optional parent ID.
+ *  - client: The Notion client used for making requests.
+ *  - serializers: Optional serializers for block and property.
+ *  - urlMask?: If specified, the url is masked with the string.
  *
  * @returns {Function} A function that takes a `databaseId` and returns a promise that resolves to a `Pages` object, which is a collection of
  * all the pages found within the specified Notion database.
  */
 export const dbCrawler: DBCrawler = (options) =>
   async function* (rootDatabaseId) {
-    const crawl = crawler({ ...options, parentId: rootDatabaseId });
+    const crawl = crawler(options);
     const records = await fetchNotionDatabase(options.client)(rootDatabaseId);
 
     for (const record of records) {

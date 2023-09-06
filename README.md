@@ -99,6 +99,7 @@ Recursively crawl the Notion Database. [`crawler`](#crawler) should be used if t
 | `serializers?`           | Used for custom serialization of Block and Property objects.                                        | Object                                        | `undefined` |
 | `serializers?.block?`    | Map of Notion block type and [`BlockSerializer`](#blockserializer).                                 | [`BlockSerializers`](#blockserializers)       | `undefined` |
 | `serializers?.property?` | Map of Notion Property Type and [`PropertySerializer`](#propertyserializer).                        | [`PropertySerializers`](#propertyserializers) | `undefined` |
+| `metadataBuilder?`       | The metadata generation process can be customize.                                                   | [`MetadataBuilder`](#metadatabuilder)         | `undefined` |
 | `urlMask?`               | If specified, the url is masked with the string.                                                    | string \| false                               | `false`     |
 
 #### `BlockSerializers`
@@ -110,7 +111,9 @@ Map with Notion block type (like `"heading_1"`, `"to_do"`, `"code"`) as key and 
 BlockSerializer that takes a Notion block object as argument. Returning `false` will skip serialization of that Notion block.
 
 ```ts
-type BlockSerializer = (block: NotionBlock) => string | false;
+type BlockSerializer = (
+  block: NotionBlock,
+) => string | false | Promise<string | false>;
 ```
 
 #### `PropertySerializers`
@@ -122,7 +125,23 @@ Map with Notion Property Type (like `"heading_1"`, `"to_do"`, `"code"`) as key a
 PropertySerializer that takes a Notion property object as argument. Returning `false` will skip serialization of that Notion property.
 
 ```ts
-type PropertySerializer = (name: string, block: NotionBlock) => string | false;
+type PropertySerializer = (
+  name: string,
+  block: NotionBlock,
+) => string | false | Promise<string | false>;
+```
+
+#### `MetadataBuilder`
+
+Retrieving metadata is sometimes very important, but the information you want to retrieve will vary depending on the context. `MetadataBuilder` allows you to customize it according to your use case.
+
+```ts
+export type MetadataBuilder<T extends Record<string, any> = {}> = (options: {
+  page: NotionPage | NotionBlock; // Current notion page object
+  title: string; // Current notion page title
+  properties?: string[]; // Current notion page properties
+  parent?: Page; // Parent page object
+}) => Metadata<T> | Promise<Metadata<T>>;
 ```
 
 ## 📊 Use Metadata
