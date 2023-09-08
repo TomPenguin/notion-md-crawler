@@ -27,3 +27,7 @@ export type ExtractProperty<T extends NotionProperty["type"]> = Extract<
   NotionProperty,
   { type: T }
 >;
+
+export type NotionChildPage =
+  | ExtractBlock<"child_page">
+  | ExtractBlock<"child_database">;
