@@ -110,6 +110,8 @@ Map with Notion block type (like `"heading_1"`, `"to_do"`, `"code"`) as key and 
 
 BlockSerializer that takes a Notion block object as argument. Returning `false` will skip serialization of that Notion block.
 
+**[Type]**
+
 ```ts
 type BlockSerializer = (
   block: NotionBlock,
@@ -124,6 +126,8 @@ Map with Notion Property Type (like `"heading_1"`, `"to_do"`, `"code"`) as key a
 
 PropertySerializer that takes a Notion property object as argument. Returning `false` will skip serialization of that Notion property.
 
+**[Type]**
+
 ```ts
 type PropertySerializer = (
   name: string,
@@ -135,13 +139,24 @@ type PropertySerializer = (
 
 Retrieving metadata is sometimes very important, but the information you want to retrieve will vary depending on the context. `MetadataBuilder` allows you to customize it according to your use case.
 
+**[Example]**
+
 ```ts
-export type MetadataBuilder<T extends Record<string, any> = {}> = (options: {
-  page: NotionPage | NotionBlock; // Current notion page object
-  title: string; // Current notion page title
-  properties?: string[]; // Current notion page properties
-  parent?: Page; // Parent page object
-}) => Metadata<T> | Promise<Metadata<T>>;
+import { crawler, MetadataBuilderParams } from "notion-md-crawler";
+
+const getUrl = (id: string) => `https://www.notion.so/${id.replace(/-/g, "")}`;
+
+const metadataBuilder = ({ page }: MetadataBuilderParams) => ({
+  url: getUrl(page.metadata.id),
+});
+
+const crawl = crawler({ client, metadataBuilder });
+
+for await (const result of crawl("notion-page-id")) {
+  if (result.success) {
+    console.log(result.page.metadata.url); // "https://www.notion.so/********"
+  }
+}
 ```
 
 ## 📊 Use Metadata

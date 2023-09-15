@@ -4,10 +4,10 @@ import { has } from "./libs.js";
 import { serializer } from "./serializer/index.js";
 import { propertiesSerializer } from "./serializer/property/index.js";
 import {
-  Crawler,
   CrawlerOptions,
   CrawlingResult,
-  DBCrawler,
+  Dictionary,
+  Metadata,
   MetadataBuilder,
   NotionBlock,
   NotionBlockObjectResponse,
@@ -38,25 +38,27 @@ const blockIs = <T extends NotionBlock["type"][]>(
   types.includes(block.type);
 
 const pageInit =
-  (metadataBuilder?: MetadataBuilder) =>
+  <T extends Dictionary>(metadataBuilder?: MetadataBuilder<T>) =>
   async (
     page: NotionPage | NotionBlock,
     title: string,
-    parent?: Page,
+    parent?: Page<T>,
     properties?: string[],
-  ): Promise<Page> => {
-    const metadata = metadataBuilder
+  ): Promise<Page<T>> => {
+    const metadata: Metadata = {
+      id: page.id,
+      title,
+      createdTime: page.created_time,
+      lastEditedTime: page.last_edited_time,
+      parentId: parent?.metadata.id,
+    };
+
+    const userMetadata = metadataBuilder
       ? await metadataBuilder({ page, title, properties, parent })
-      : {
-          id: page.id,
-          title,
-          createdTime: page.created_time,
-          lastEditedTime: page.last_edited_time,
-          parentId: parent?.metadata.id,
-        };
+      : ({} as T);
 
     return {
-      metadata,
+      metadata: { ...metadata, ...userMetadata },
       properties: properties || [],
       lines: [],
     };
@@ -70,9 +72,9 @@ const IGNORE_NEST_LIST = ["table", "table_row", "column_list", "column"];
 
 const indent = _indent();
 
-const getBlockSerializer = (
+const getBlockSerializer = <T extends Dictionary>(
   type: NotionBlock["type"],
-  { urlMask = false, serializers }: CrawlerOptions,
+  { urlMask = false, serializers }: CrawlerOptions<T>,
 ) =>
   ({
     ...serializer.block.strategy({ urlMask }),
@@ -82,13 +84,18 @@ const getBlockSerializer = (
 const isPage = (block: NotionBlock): block is NotionChildPage =>
   blockIs(block, ["child_page", "child_database"]);
 
-const getSuccessResult = (page: Page): CrawlingResult => ({
+const getSuccessResult = <T extends Dictionary>(
+  page: Page<T>,
+): CrawlingResult<T> => ({
   id: page.metadata.id,
   success: true,
   page,
 });
 
-const getFailedResult = (page: Page, err: unknown): CrawlingResult => ({
+const getFailedResult = <T extends Dictionary>(
+  page: Page<T>,
+  err: unknown,
+): CrawlingResult<T> => ({
   id: page.metadata.id,
   success: false,
   failure: {
@@ -101,7 +108,7 @@ const getFailedResult = (page: Page, err: unknown): CrawlingResult => ({
 });
 
 const readLines =
-  (options: CrawlerOptions) =>
+  <T extends Dictionary>(options: CrawlerOptions<T>) =>
   async (blocks: NotionBlockObjectResponse[], depth = 0) => {
     let lines: string[] = [];
     let pages: NotionChildPage[] = [];
@@ -148,12 +155,12 @@ const readLines =
     return { lines, pages };
   };
 
-const walking = (options: CrawlerOptions) =>
+const walking = <T extends Dictionary>(options: CrawlerOptions<T>) =>
   async function* (
-    parent: Page,
+    parent: Page<T>,
     blocks: NotionBlockObjectResponse[],
     depth = 0,
-  ): AsyncGenerator<CrawlingResult> {
+  ): AsyncGenerator<CrawlingResult<T>> {
     try {
       const { client, metadataBuilder } = options;
       const initPage = pageInit(metadataBuilder);
@@ -185,9 +192,9 @@ const walking = (options: CrawlerOptions) =>
     }
   };
 
-const serializeProperties = (
+const serializeProperties = <T extends Dictionary>(
   properties: NotionProperties,
-  options: CrawlerOptions,
+  options: CrawlerOptions<T>,
 ) => {
   const { urlMask = false, serializers } = options;
   const _serializers = {
@@ -237,8 +244,8 @@ const extractPageTitle = (page: NotionPage) => {
  *   }
  * }
  */
-export const crawler: Crawler = (options) =>
-  async function* (rootPageId) {
+export const crawler = <T extends Dictionary>(options: CrawlerOptions<T>) =>
+  async function* (rootPageId: string): AsyncGenerator<CrawlingResult<T>> {
     const { client, parent, metadataBuilder } = options;
     const notionPage = await fetchNotionPage(client)(rootPageId);
     if (!has(notionPage, "parent")) {
@@ -275,14 +282,14 @@ export const crawler: Crawler = (options) =>
  * @returns {Function} A function that takes a `databaseId` and returns a promise that resolves to a `Pages` object, which is a collection of
  * all the pages found within the specified Notion database.
  */
-export const dbCrawler: DBCrawler = (options) =>
-  async function* (rootDatabaseId) {
+export const dbCrawler = <T extends Dictionary>(options: CrawlerOptions<T>) =>
+  async function* (rootDatabaseId: string): AsyncGenerator<CrawlingResult<T>> {
     const crawl = crawler(options);
     const records = await fetchNotionDatabase(options.client)(rootDatabaseId);
 
     const { parent } = options;
     if (parent) {
-      yield getSuccessResult(parent);
+      yield getSuccessResult<T>(parent);
     }
 
     for (const record of records) {

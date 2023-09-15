@@ -1,5 +1,11 @@
 import { h1 } from "md-utils-ts";
-import { Crawler, CrawlingResult, DBCrawler, Page } from "./types.js";
+import {
+  Crawler,
+  CrawlingResult,
+  DBCrawler,
+  Dictionary,
+  Page,
+} from "./types.js";
 
 const nestHeading = (text: string) => (text.match(/^#+\s/) ? "#" + text : text);
 
@@ -14,16 +20,20 @@ const nestHeading = (text: string) => (text.match(/^#+\s/) ? "#" + text : text);
  *
  * @returns {string} A string representation of the provided page.
  */
-export const pageToString = ({ metadata, properties, lines }: Page): string => {
+export const pageToString = <T extends Dictionary>({
+  metadata,
+  properties,
+  lines,
+}: Page<T>): string => {
   const title = h1(metadata.title);
   const data = ["---", properties.join("\n"), "---"].join("\n");
   const body = lines.map(nestHeading);
   return [title, data, ...body].join("\n");
 };
 
-type Crawling =
-  | ReturnType<ReturnType<Crawler>>
-  | ReturnType<ReturnType<DBCrawler>>;
+type Crawling<T extends Dictionary = {}> =
+  | ReturnType<ReturnType<Crawler<T>>>
+  | ReturnType<ReturnType<DBCrawler<T>>>;
 
 /**
  * Asynchronously waits for all results from a given crawling operation and collects them into an array.
@@ -48,8 +58,10 @@ type Crawling =
  *     console.error("Error during crawling:", error);
  *   });
  */
-export const waitAllResults = async (crawling: Crawling) => {
-  const results: CrawlingResult[] = [];
+export const waitAllResults = async <T extends Dictionary>(
+  crawling: Crawling<T>,
+) => {
+  const results: CrawlingResult<T>[] = [];
 
   for await (const result of crawling) {
     results.push(result);

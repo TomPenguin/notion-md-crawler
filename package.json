@@ -1,6 +1,6 @@
 {
   "name": "notion-md-crawler",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "A library to recursively retrieve and serialize Notion pages with customization for machine learning applications.",
   "type": "module",
   "main": "./dist/index.cjs",

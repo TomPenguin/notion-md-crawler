@@ -4,14 +4,17 @@ import { BlockSerializers, PropertySerializers } from "./serializer/index.js";
 
 export * from "./notion.types.js";
 
-type Metadata<T extends Record<string, any> = {}> = {
+export type Dictionary = Record<string, any>;
+
+export type Metadata<T extends Dictionary = {}> = {
   id: string;
   title: string;
   createdTime: string;
   lastEditedTime: string;
   parentId?: string;
 } & T;
-export type Page<T extends Record<string, any> = {}> = {
+
+export type Page<T extends Dictionary = {}> = {
   metadata: Metadata<T>;
   properties: string[];
   lines: string[];
@@ -22,11 +25,11 @@ export type CrawlingFailure = {
   reason: string;
 };
 
-export type CrawlingResult =
+export type CrawlingResult<T extends Dictionary = {}> =
   | {
       id: string;
       success: true;
-      page: Page;
+      page: Page<T>;
     }
   | {
       id: string;
@@ -39,25 +42,29 @@ export type OptionalSerializers = {
   property?: Partial<PropertySerializers>;
 };
 
-export type MetadataBuilder<T extends Record<string, any> = {}> = (options: {
+export type MetadataBuilderParams<T extends Dictionary = {}> = {
   page: NotionPage | NotionBlock;
   title: string;
   properties?: string[];
-  parent?: Page;
-}) => Metadata<T> | Promise<Metadata<T>>;
+  parent?: Page<T>;
+};
 
-export type CrawlerOptions = {
+export type MetadataBuilder<T extends Dictionary = {}> = (
+  params: MetadataBuilderParams<T>,
+) => T | Promise<T>;
+
+export type CrawlerOptions<T extends Dictionary = {}> = {
   client: Client;
   serializers?: OptionalSerializers;
   urlMask?: string | false;
-  metadataBuilder?: MetadataBuilder;
-  parent?: Page;
+  metadataBuilder?: MetadataBuilder<T>;
+  parent?: Page<T>;
 };
 
-export type Crawler = (
-  options: CrawlerOptions,
-) => (rootPageId: string) => AsyncGenerator<CrawlingResult>;
+export type Crawler<T extends Dictionary = {}> = (
+  options: CrawlerOptions<T>,
+) => (rootPageId: string) => AsyncGenerator<CrawlingResult<T>>;
 
-export type DBCrawler = (
-  options: CrawlerOptions,
-) => (rootDatabaseId: string) => AsyncGenerator<CrawlingResult>;
+export type DBCrawler<T extends Dictionary = {}> = (
+  options: CrawlerOptions<T>,
+) => (rootDatabaseId: string) => AsyncGenerator<CrawlingResult<T>>;
