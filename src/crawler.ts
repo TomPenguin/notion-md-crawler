@@ -37,6 +37,9 @@ const blockIs = <T extends NotionBlock["type"][]>(
 ): block is Extract<NotionBlock, { type: T[number] }> =>
   types.includes(block.type);
 
+const shouldSkipPage = (currentPageId: string, skipPageIds?: string[]) =>
+  skipPageIds && skipPageIds.includes(currentPageId);
+
 const pageInit =
   <T extends Dictionary>(metadataBuilder?: MetadataBuilder<T>) =>
   async (
@@ -169,6 +172,8 @@ const walking = <T extends Dictionary>(options: CrawlerOptions<T>) =>
       yield getSuccessResult({ ...parent, lines });
 
       for (const page of pages) {
+        if (shouldSkipPage(page.id, options.skipPageIds)) continue;
+
         if (blockIs(page, ["child_page"])) {
           const { title } = page.child_page;
           const _parent = await initPage(page, title, parent);
@@ -246,7 +251,8 @@ const extractPageTitle = (page: NotionPage) => {
  */
 export const crawler = <T extends Dictionary>(options: CrawlerOptions<T>) =>
   async function* (rootPageId: string): AsyncGenerator<CrawlingResult<T>> {
-    const { client, parent, metadataBuilder } = options;
+    const { client, parent, metadataBuilder, skipPageIds } = options;
+    if (shouldSkipPage(rootPageId, skipPageIds)) return;
 
     try {
       const notionPage = await fetchNotionPage(client)(rootPageId);
@@ -291,6 +297,9 @@ export const crawler = <T extends Dictionary>(options: CrawlerOptions<T>) =>
  */
 export const dbCrawler = <T extends Dictionary>(options: CrawlerOptions<T>) =>
   async function* (rootDatabaseId: string): AsyncGenerator<CrawlingResult<T>> {
+    const { skipPageIds } = options;
+    if (shouldSkipPage(rootDatabaseId, skipPageIds)) return;
+
     const crawl = crawler(options);
     const records = await fetchNotionDatabase(options.client)(rootDatabaseId);
 

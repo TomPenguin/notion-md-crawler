@@ -58,6 +58,7 @@ export type CrawlerOptions<T extends Dictionary = {}> = {
   serializers?: OptionalSerializers;
   urlMask?: string | false;
   metadataBuilder?: MetadataBuilder<T>;
+  skipPageIds?: string[];
   parent?: Page<T>;
 };
 

@@ -101,6 +101,7 @@ Recursively crawl the Notion Database. [`crawler`](#crawler) should be used if t
 | `serializers?.property?` | Map of Notion Property Type and [`PropertySerializer`](#propertyserializer).                        | [`PropertySerializers`](#propertyserializers) | `undefined` |
 | `metadataBuilder?`       | The metadata generation process can be customize.                                                   | [`MetadataBuilder`](#metadatabuilder)         | `undefined` |
 | `urlMask?`               | If specified, the url is masked with the string.                                                    | string \| false                               | `false`     |
+| `skipPageIds?`           | List of page Ids to skip crawling (also skips descendant pages)                                     | string[]                                      | `undefined` |
 
 #### `BlockSerializers`
 
