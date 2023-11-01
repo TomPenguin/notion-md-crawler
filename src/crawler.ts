@@ -247,25 +247,32 @@ const extractPageTitle = (page: NotionPage) => {
 export const crawler = <T extends Dictionary>(options: CrawlerOptions<T>) =>
   async function* (rootPageId: string): AsyncGenerator<CrawlingResult<T>> {
     const { client, parent, metadataBuilder } = options;
-    const notionPage = await fetchNotionPage(client)(rootPageId);
-    if (!has(notionPage, "parent")) {
-      const reason = "Unintended Notion Page object.";
 
-      return yield {
-        id: rootPageId,
-        success: false,
-        failure: { parentId: parent?.metadata.id, reason },
-      };
+    try {
+      const notionPage = await fetchNotionPage(client)(rootPageId);
+
+      if (!has(notionPage, "parent")) {
+        const reason = "Unintended Notion Page object.";
+
+        return yield {
+          id: rootPageId,
+          success: false,
+          failure: { parentId: parent?.metadata.id, reason },
+        };
+      }
+
+      // Preparation Before Exploring
+      const props = await serializeProperties(notionPage.properties, options);
+      const blocks = await fetchNotionBlocks(client)(notionPage.id);
+      const title = extractPageTitle(notionPage);
+      const initPage = pageInit(metadataBuilder);
+      const rootPage = await initPage(notionPage, title, parent, props);
+
+      yield* walking(options)(rootPage, blocks);
+    } catch {
+      // Try as DB Page may have been passed.
+      yield* dbCrawler(options)(rootPageId);
     }
-
-    // Preparation Before Exploring
-    const props = await serializeProperties(notionPage.properties, options);
-    const blocks = await fetchNotionBlocks(client)(notionPage.id);
-    const title = extractPageTitle(notionPage);
-    const initPage = pageInit(metadataBuilder);
-    const rootPage = await initPage(notionPage, title, parent, props);
-
-    yield* walking(options)(rootPage, blocks);
   };
 
 /**
