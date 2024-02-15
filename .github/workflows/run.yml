@@ -20,6 +20,11 @@ jobs:
           node-version: "14"
           cache: "pnpm"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
       - name: Install Dependencies with pnpm
         if: ${{ steps.setup_node_id.outputs.cache-hit != 'true' }}
         run: pnpm install --frozen-lockfile
