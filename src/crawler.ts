@@ -1,5 +1,9 @@
-import { Client, collectPaginatedAPI } from "@notionhq/client";
 import { indent as _indent } from "md-utils-ts";
+import {
+  fetchNotionBlocks,
+  fetchNotionDatabase,
+  fetchNotionPage,
+} from "./clients.js";
 import { has } from "./libs.js";
 import { serializer } from "./serializer/index.js";
 import { propertiesSerializer } from "./serializer/property/index.js";
@@ -16,20 +20,6 @@ import {
   NotionProperties,
   Page,
 } from "./types.js";
-
-const fetchNotionBlocks = (client: Client) => async (blockId: string) =>
-  collectPaginatedAPI(client.blocks.children.list, {
-    block_id: blockId,
-  }).catch(() => []);
-
-const fetchNotionPage = (client: Client) => (pageId: string) =>
-  client.pages.retrieve({ page_id: pageId });
-
-const fetchNotionDatabase = (client: Client) => (databaseId: string) =>
-  client.databases
-    .query({ database_id: databaseId })
-    .then(({ results }) => results)
-    .catch(() => []);
 
 const blockIs = <T extends NotionBlock["type"][]>(
   block: NotionBlock,
