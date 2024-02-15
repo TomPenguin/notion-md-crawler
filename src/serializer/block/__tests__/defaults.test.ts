@@ -1,7 +1,14 @@
+import { describe, expect, it } from "vitest";
 import { fromLink, fromRichText } from "../../utils.js";
-import { audio, bookmark, bulletedListItem } from "../defaults.js";
+import {
+  audio as _audio,
+  bookmark as _bookmark,
+  bulletedListItem as _bulletedListItem,
+} from "../defaults.js";
 
 describe("audio", () => {
+  const audio = _audio({ urlMask: false });
+
   it("should return a markdown anchor tag when a valid block object is provided", () => {
     const block = {
       audio: {
@@ -33,6 +40,8 @@ describe("audio", () => {
 });
 
 describe("bookmark", () => {
+  const bookmark = _bookmark({ urlMask: false });
+
   it("should correctly serialize a block with both bookmark caption and url", () => {
     const block = {
       bookmark: {
@@ -95,6 +104,8 @@ describe("bookmark", () => {
 });
 
 describe("bulletedListItem", () => {
+  const bulletedListItem = _bulletedListItem({ urlMask: false });
+
   it("should prefix the rich text with a bullet symbol", () => {
     const block = {
       bulleted_list_item: {

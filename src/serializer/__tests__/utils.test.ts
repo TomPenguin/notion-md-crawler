@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import {
   annotate,
   fromDate,
@@ -211,17 +212,17 @@ describe("fromUser", () => {
 });
 
 describe("fromDate", () => {
-  test('should return "<empty>" when date is null', () => {
+  it('should return "<empty>" when date is null', () => {
     const date = null;
     expect(fromDate(date as any)).toBe("<empty>");
   });
 
-  test("should return only the start date when the date object has no end date", () => {
+  it("should return only the start date when the date object has no end date", () => {
     const date = { start: "2023-09-01" };
     expect(fromDate(date as any)).toBe("2023-09-01");
   });
 
-  test("should return both start and end dates when the date object has both", () => {
+  it("should return both start and end dates when the date object has both", () => {
     const date = { start: "2023-09-01", end: "2023-09-05" };
     expect(fromDate(date as any)).toBe(`(start)2023-09-01, (end): 2023-09-05`);
   });
