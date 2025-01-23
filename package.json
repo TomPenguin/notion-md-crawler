@@ -8,9 +8,9 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -41,14 +41,14 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.5.9",
-    "prettier": "^3.0.3",
-    "prettier-plugin-organize-imports": "^3.2.3",
-    "tsup": "^7.2.0",
-    "vitest": "^1.2.2"
+    "@types/node": "^22.10.9",
+    "prettier": "^3.4.2",
+    "prettier-plugin-organize-imports": "^4.1.0",
+    "tsup": "^8.3.5",
+    "vitest": "^3.0.3"
   },
   "dependencies": {
-    "@notionhq/client": "^2.2.12",
+    "@notionhq/client": "^2.2.15",
     "md-utils-ts": "^2.0.0"
   }
 }
