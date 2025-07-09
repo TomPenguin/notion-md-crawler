@@ -19,7 +19,8 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --sourcemap",
     "prepublishOnly": "pnpm run build",
-    "test": "vitest"
+    "test": "vitest",
+    "test:integration": "RUN_INTEGRATION_TESTS=1 vitest run tests/integration.test.ts"
   },
   "repository": {
     "type": "git",
@@ -42,6 +43,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.10.9",
+    "dotenv": "^17.1.0",
     "prettier": "^3.4.2",
     "prettier-plugin-organize-imports": "^4.1.0",
     "tsup": "^8.3.5",

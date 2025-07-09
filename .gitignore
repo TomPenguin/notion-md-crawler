@@ -129,4 +129,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-src/test.ts
+# Claude files
+CLAUDE.md
+.claude
